@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: weather-api
+    env: docker
+    plan: free
+    region: frankfurt
+    branch: main
+    dockerfilePath: ./Dockerfile
+    buildCommand: ""   # Не потрібно — Render сам виконує docker build
+    startCommand: ""   # Не потрібно — CMD у Dockerfile вже є
+    autoDeploy: true
+    
