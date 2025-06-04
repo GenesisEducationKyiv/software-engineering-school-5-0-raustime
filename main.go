@@ -48,7 +48,10 @@ func main() {
 	jobs.StartWeatherNotificationLoop(dbconn, mailerSender)
 
 	r := api.SetupRouter(dbconn, mailerSender)
-	r.SetTrustedProxies([]string{})
+
+	if err := r.SetTrustedProxies([]string{}); err != nil {
+		log.Fatalf("failed to set trusted proxies: %v", err)
+	}
 	// Додаємо CORS middleware
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},

@@ -1,6 +1,7 @@
 package mailer_test
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"weatherapi/internal/mailer"
@@ -9,15 +10,25 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setupTemplates() {
-	os.MkdirAll("internal/templates", 0755)
-	os.WriteFile("internal/templates/confirmation_email.html", []byte(`
+func setupTemplates() error {
+	if err := os.MkdirAll("internal/templates", 0755); err != nil {
+		return fmt.Errorf("failed to create templates directory: %w", err)
+	}
+
+	if err := os.WriteFile("internal/templates/confirmation_email.html", []byte(`
 		<html><body><a href="{{.ConfirmURL}}">Confirm</a></body></html>
-	`), 0644)
-	os.WriteFile("internal/templates/weather_email.html", []byte(`
+	`), 0644); err != nil {
+		return fmt.Errorf("failed to write confirmation_email.html: %w", err)
+	}
+
+	if err := os.WriteFile("internal/templates/weather_email.html", []byte(`
 		<html><body>{{.City}} - {{.Temperature}}°C, {{.Description}}.
 		<a href="{{.UnsubscribeURL}}">Unsubscribe</a></body></html>
-	`), 0644)
+	`), 0644); err != nil {
+		return fmt.Errorf("failed to write weather_email.html: %w", err)
+	}
+
+	return nil
 }
 
 func TestSendConfirmationEmail(t *testing.T) {
@@ -44,7 +55,9 @@ func TestSendWeatherEmail(t *testing.T) {
 	mailer.Email = mock
 	defer func() { mailer.Email = oldEmail }()
 
-	setupTemplates()
+	if err := setupTemplates(); err != nil {
+		t.Fatalf("failed to set up templates: %v", err)
+	}
 
 	data := &openweatherapi.WeatherData{
 		Description: "Cloudy",

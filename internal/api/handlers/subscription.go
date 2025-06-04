@@ -77,7 +77,6 @@ func (h *Handler) SubscribeHandler(c *gin.Context) {
 
 func (h *Handler) InvalidConfirmHandler(c *gin.Context) {
 	c.AbortWithStatus(http.StatusBadRequest)
-	return
 }
 
 func (h *Handler) ConfirmHandler(c *gin.Context) {
@@ -107,7 +106,6 @@ func (h *Handler) ConfirmHandler(c *gin.Context) {
 
 func (h *Handler) InvalidUnsubscribeHandler(c *gin.Context) {
 	c.AbortWithStatus(http.StatusBadRequest)
-	return
 }
 
 func (h *Handler) UnsubscribeHandler(c *gin.Context) {
