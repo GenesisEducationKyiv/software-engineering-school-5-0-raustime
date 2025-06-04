@@ -64,7 +64,7 @@ func TestSendWeatherEmail(t *testing.T) {
 		Temperature: 13.7,
 		Humidity:    70,
 	}
-	err = mailer.SendWeatherEmailWithSender(mock, "user@example.com", "Berlin", data, "https://example.com", "tok789")
+	err := mailer.SendWeatherEmailWithSender(mock, "user@example.com", "Berlin", data, "https://example.com", "tok789")
 
 	assert.NoError(t, err)
 	assert.Equal(t, "user@example.com", mock.LastTo)
