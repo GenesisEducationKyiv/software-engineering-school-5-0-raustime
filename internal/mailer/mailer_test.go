@@ -55,7 +55,9 @@ func TestSendWeatherEmail(t *testing.T) {
 	mailer.Email = mock
 	defer func() { mailer.Email = oldEmail }()
 
-	err := setupTemplates()
+	if err := setupTemplates(); err != nil {
+		t.Fatalf("failed to set up templates: %v", err)
+	}
 
 	data := &openweatherapi.WeatherData{
 		Description: "Cloudy",
