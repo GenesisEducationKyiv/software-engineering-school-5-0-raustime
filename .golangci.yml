@@ -1,0 +1,16 @@
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - gofmt
+    - goimports
+    - golint
+    - ineffassign
+    - deadcode
+
+issues:
+  exclude-use-default: false
