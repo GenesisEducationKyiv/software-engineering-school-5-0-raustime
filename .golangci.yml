@@ -3,14 +3,17 @@ run:
 
 linters:
   enable:
+    - unused
+    - revive
     - govet
     - errcheck
     - staticcheck
     - gofmt
     - goimports
-    - golint
     - ineffassign
+  disable:
     - deadcode
+    - golint
 
 issues:
   exclude-use-default: false
