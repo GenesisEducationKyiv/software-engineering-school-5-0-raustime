@@ -2,6 +2,7 @@ package mailer_test
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"testing"
 	"weatherapi/internal/mailer"
@@ -148,7 +149,11 @@ func TestSendWeatherEmail_InvalidTemplate(t *testing.T) {
 
 	err := os.WriteFile(tempFile, []byte(invalidTemplate), 0644)
 	assert.NoError(t, err)
-	defer os.Remove(tempFile)
+	defer func() {
+		if err := os.Remove(tempFile); err != nil {
+			log.Printf("Failed to remove temp file %s: %v", tempFile, err)
+		}
+	}()
 
 	// Тест повинен пройти, оскільки ми використовуємо правильний шаблон
 	data := &openweatherapi.WeatherData{

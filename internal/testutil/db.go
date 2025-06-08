@@ -100,38 +100,3 @@ func CreateTestDBWithData(t *testing.T) *bun.DB {
 
 	return db
 }
-
-// Optional: Seed test data function
-func seedTestData(t *testing.T, db *bun.DB) {
-	t.Helper()
-
-	ctx := context.Background()
-
-	// Example: Insert test subscriptions
-	testSubscriptions := []map[string]interface{}{
-		{
-			"email":     "test1@example.com",
-			"city":      "Kyiv",
-			"frequency": "daily",
-			"confirmed": true,
-			"token":     "test_token_1",
-		},
-		{
-			"email":     "test2@example.com",
-			"city":      "Lviv",
-			"frequency": "weekly",
-			"confirmed": false,
-			"token":     "test_token_2",
-		},
-	}
-
-	for _, sub := range testSubscriptions {
-		_, err := db.NewInsert().
-			Model(&sub).
-			Table("subscriptions").
-			Exec(ctx)
-		if err != nil {
-			t.Fatalf("failed to seed test data: %v", err)
-		}
-	}
-}

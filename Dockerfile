@@ -7,9 +7,9 @@ RUN apt-get update && apt-get install -y bash netcat-openbsd postgresql-client &
 # Робоча директорія всередині контейнера
 WORKDIR /app
 
-# After WORKDIR /app
-COPY wait-for-postgres.sh ./
-RUN chmod +x ./wait-for-postgres.sh
+# Створюємо скрипт очікування
+RUN printf '#!/bin/bash\nset -e\n\nhost="$PGHOST"\nport="$PGPORT"\nuser="$PGUSER"\n\nuntil pg_isready -h "$host" -p "$port" -U "$user"; do\n  >&2 echo "Postgres is unavailable - sleeping"\n  sleep 1\ndone\n\n>&2 echo "Postgres is up - executing command"\nexec "$@"\n' > /app/wait-for-postgres.sh && \
+    chmod +x /app/wait-for-postgres.sh
 
 # Копіюємо go.mod та go.sum і завантажуємо залежності
 COPY go.mod go.sum ./
@@ -18,12 +18,8 @@ RUN go mod download
 # Копіюємо весь код у контейнер
 COPY . .
 
-# Збираємо бінарник 
-RUN go build -o app ./cmd
-
-
-# Переконуємося, що app має права на виконання
-RUN chmod +x ./app
+# Збираємо бінарник
+RUN go build -o app ./cmd && chmod +x ./app
 
 # Вказуємо скрипт як entrypoint
 ENTRYPOINT ["/app/wait-for-postgres.sh"]

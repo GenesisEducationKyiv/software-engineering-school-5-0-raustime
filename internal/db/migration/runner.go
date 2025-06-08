@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -150,8 +151,11 @@ func (r *Runner) getAppliedMigrations(ctx context.Context) (map[string]bool, err
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Failed to close rows: %v", err)
+		}
+	}()
 	applied := make(map[string]bool)
 	for rows.Next() {
 		var version string
@@ -170,16 +174,20 @@ func (r *Runner) applyMigration(ctx context.Context, migration Migration) error 
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("tx rollback failed: %v", err)
+		}
+	}()
 
 	// Execute migration SQL
 	if _, err := tx.ExecContext(ctx, migration.UpSQL); err != nil {
 		return fmt.Errorf("failed to execute migration SQL: %w", err)
 	}
 
-	// Record migration as applied
+	// Record migration as applied - FIXED: Using ? placeholders instead of $1, $2
 	_, err = tx.ExecContext(ctx,
-		"INSERT INTO migrations (version, name) VALUES ($1, $2)",
+		"INSERT INTO migrations (version, name) VALUES (?, ?)",
 		migration.Version, migration.Name,
 	)
 	if err != nil {
@@ -227,15 +235,20 @@ func (r *Runner) Rollback(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("tx rollback failed: %v", err)
+		}
+	}()
 
 	// Execute down migration
 	if _, err := tx.ExecContext(ctx, downSQL); err != nil {
 		return fmt.Errorf("failed to execute down migration: %w", err)
 	}
 
-	// Remove migration record
-	_, err = tx.ExecContext(ctx, "DELETE FROM migrations WHERE version = $1", version)
+	// Remove migration record - FIXED: Using ? placeholder instead of $1
+	_, err = tx.ExecContext(ctx, "DELETE FROM migrations WHERE version = ?", version)
 	if err != nil {
 		return fmt.Errorf("failed to remove migration record: %w", err)
 	}
