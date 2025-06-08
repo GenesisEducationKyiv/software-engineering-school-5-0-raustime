@@ -1,11 +1,15 @@
 # syntax=docker/dockerfile:1
-FROM golang:1.21
+FROM golang:1.23
 
 # Встановлюємо bash, netcat, postgresql-client
 RUN apt-get update && apt-get install -y bash netcat-openbsd postgresql-client && rm -rf /var/lib/apt/lists/*
 
 # Робоча директорія всередині контейнера
 WORKDIR /app
+
+# After WORKDIR /app
+COPY wait-for-postgres.sh ./
+RUN chmod +x ./wait-for-postgres.sh
 
 # Копіюємо go.mod та go.sum і завантажуємо залежності
 COPY go.mod go.sum ./
@@ -14,11 +18,9 @@ RUN go mod download
 # Копіюємо весь код у контейнер
 COPY . .
 
-# Збираємо бінарник під ім'ям app
-RUN go build -o app main.go
+# Збираємо бінарник 
+RUN go build -o app ./cmd
 
-# Даємо права на виконання скрипту очікування Postgres
-RUN chmod +x /app/wait-for-postgres.sh
 
 # Переконуємося, що app має права на виконання
 RUN chmod +x ./app

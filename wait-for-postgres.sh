@@ -1,4 +1,4 @@
-#!/bin/sh
+﻿#!/bin/sh
 
 : "${PGHOST:=db}"
 : "${PGPORT:=5432}"
@@ -13,7 +13,7 @@ done
 
 echo "Postgres is up - executing command"
 
-# Перевірка чи існує база weatherdb_test
+# РџРµСЂРµРІС–СЂРєР° С‡Рё С–СЃРЅСѓС” Р±Р°Р·Р° weatherdb_test
 exists=$(psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -tAc "SELECT 1 FROM pg_database WHERE datname='weatherdb_test'")
 
 if [ "$exists" != "1" ]; then
@@ -23,5 +23,5 @@ else
   echo "Database weatherdb_test already exists."
 fi
 
-# Запускаємо команду, передану скрипту (наприклад go test)
+# Р—Р°РїСѓСЃРєР°С”РјРѕ РєРѕРјР°РЅРґСѓ, РїРµСЂРµРґР°РЅСѓ СЃРєСЂРёРїС‚Сѓ (РЅР°РїСЂРёРєР»Р°Рґ go test)
 exec "$@"
