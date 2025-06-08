@@ -672,7 +672,7 @@ Requirements ──┬── WeatherService
 │  ┌─────────────────────────────────────────┐   │
 │  │         Go Backend Server               │   │
 │  │  ┌─────────────────────────────────┐   │   │
-│  │  │      API Gateway (Gin)          │   │   │
+│  │  │      API Gateway            │   │   │
 │  │  ├─────────────────────────────────┤   │   │
 │  │  │    Weather Service              │   │   │
 │  │  │    Subscription Service         │   │   │
