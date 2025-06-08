@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 )
@@ -38,7 +39,11 @@ func FetchWeather(city string) (*WeatherData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get weather: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			log.Printf("warning: failed to close response body: %v", cerr)
+		}
+	}()
 
 	// special case for 404
 	if resp.StatusCode == http.StatusNotFound {

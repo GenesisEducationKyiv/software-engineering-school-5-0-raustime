@@ -44,8 +44,6 @@ services:
     working_dir: /app
     entrypoint: ["/app/wait-for-postgres.sh"]
     command: ["go", "test", "-v", "./..."]
-    volumes:
-      - ./wait-for-postgres.sh:/app/wait-for-postgres.sh
 
 volumes:
   pgdata:
