@@ -117,34 +117,62 @@ SDD служить основним довідковим документом д
 
 ### 3.1 Архітектурний дизайн
 
-Система реалізована за принципом багаторівневої архітектури з чітким розділенням відповідальності:
+Система реалізована за принципом **Layered Architecture** з елементами **Clean Architecture**. Чіткий розподіл на шари з інверсією залежностей.
 
 ```
 ┌─────────────────────────┐
-│    Presentation Layer   │
+│    Frontend Module      │
 │      (Vue.js SPA)       │
+│  • Weather Dashboard    │
+│  • Subscription Mgmt    │
+│  • User Interface       │
 └─────────┬───────────────┘
           │ HTTP/REST API
           ▼
 ┌─────────────────────────┐
-│    Application Layer    │
-│     (Go Backend)        │
-├─────────────────────────┤
-│  • API Gateway          │
-│  • Business Logic       │
-│  • Email Scheduler      │
-│  • Cache Manager        │
+│   Presentation Layer    │
+│    (Go HTTP Handlers)   │
+│  • Weather Controller   │
+│  • Subscription API     │
+│  • Request Validation   │
+└─────────┬───────────────┘
+          │
+          ▼
+┌─────────────────────────┐
+│   Application Layer     │
+│    (Business Logic)     │
+│  • App Orchestration    │
+│  • Weather Jobs         │
+│  • Subscription Logic   │
+└─────────┬───────────────┘
+          │
+          ▼
+┌─────────────────────────┐
+│     Domain Layer        │
+│    (Core Models)        │
+│  • Subscription Entity  │
+│  • Business Rules       │
 └─────────┬───────────────┘
           │
     ┌─────┴─────┐
     ▼           ▼
-┌─────────┐ ┌─────────┐
-│   Data  │ │External │
-│ Layer   │ │Services │
-│(PostSQL)│ │ Layer   │
-└─────────┘ └─────────┘
-            │WeatherAPI│
-            │SMTP/Email│
+┌─────────┐ ┌─────────────────────┐
+│Database │ │  Infrastructure     │
+│ Module  │ │     Modules         │
+│(PostSQL)│ ├─────────────────────┤
+│• Models │ │ Email Service       │
+│• Repos  │ │ • SMTP Client       │
+│• Migrate│ │ • HTML Templates    │
+└─────────┘ │ • Mock Testing      │
+            ├─────────────────────┤
+            │ Weather API Module  │
+            │ • HTTP Client       │
+            │ • Data Transform    │
+            ├─────────────────────┤
+            │ Configuration       │
+            │ • Environment Vars  │
+            │ • Service Settings  │
+            └─────────────────────┘
 ```
 
 **Основні підсистеми:**
