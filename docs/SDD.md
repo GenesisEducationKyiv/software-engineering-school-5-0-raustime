@@ -1,8 +1,8 @@
 # Сервіс Підписки на Погоду
 ## Software Design Document (SDD)
 
-**Версія:** 1.0  
-**Дата:** 08/06/2025  
+**Версія:** 1.01  
+**Дата:** 09/06/2025  
 **Автор:** Roman Ustymenko  
 
 [шаблон, на основі якого створено документ](https://wildart.github.io/MISG5020/standards/SDD_Template.pdf)
@@ -873,8 +873,8 @@ CREATE INDEX IF NOT EXISTS idx_subscriptions_city ON subscriptions(city);
 **Переглянуто:** System Architect  
 **Затверджено:** Project Manager  
 
-**Дата останнього оновлення:** 08/06/2025  
-**Версія документу:** 1.0  
+**Дата останнього оновлення:** 09/06/2025  
+**Версія документу:** 1.01  
 
 ---
 
