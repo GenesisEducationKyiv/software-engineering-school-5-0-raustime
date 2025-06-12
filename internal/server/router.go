@@ -1,0 +1,59 @@
+package server
+
+import (
+	"net/http"
+	"strings"
+	"time"
+
+	"weatherapi/internal/server/handlers"
+	"weatherapi/internal/server/middleware"
+	"weatherapi/internal/services"
+)
+
+// Router represents HTTP router following Single Responsibility Principle
+type Router struct {
+	mux              *http.ServeMux
+	weatherHandler   *handlers.WeatherHandler
+	subscriptionHandler *handlers.SubscriptionHandler
+}
+
+// NewRouter creates a new router with all handlers
+func NewRouter(weatherService services.WeatherService, subscriptionService services.SubscriptionService, mailerService services.MailerService) http.Handler {
+	router := &Router{
+		mux:              http.NewServeMux(),
+		weatherHandler:   handlers.NewWeatherHandler(weatherService),
+		subscriptionHandler: handlers.NewSubscriptionHandler(subscriptionService, mailerService),
+	}
+
+	router.setupRoutes()
+	
+	// Apply middleware
+	return middleware.Chain(
+		router.mux,
+		middleware.CORS(),
+		middleware.Logging(),
+		middleware.Recovery(),
+	)
+}
+
+// setupRoutes configures all application routes
+func (r *Router) setupRoutes() {
+	// Weather routes
+	r.mux.HandleFunc("/api/weather", r.weatherHandler.GetWeather)
+
+	// Subscription routes
+	r.mux.HandleFunc("/api/subscribe", r.methodFilter("POST", r.subscriptionHandler.Subscribe))
+	r.mux.HandleFunc("/api/confirm/", r.methodFilter("GET", r.subscriptionHandler.Confirm))
+	r.mux.HandleFunc("/api/unsubscribe/", r.methodFilter("GET", r.subscriptionHandler.Unsubscribe))
+}
+
+// methodFilter filters HTTP methods for handlers
+func (r *Router) methodFilter(allowedMethod string, handler http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != allowedMethod {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		handler(w, req)
+	}
+}
