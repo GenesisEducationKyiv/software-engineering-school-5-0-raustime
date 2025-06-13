@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: weatherdb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    restart: unless-stopped
+
+  api:
+    build: .
+    working_dir: /app
+    depends_on:
+      - db
+    environment:
+      - DB_URL=postgres://postgres:postgres@db:5432/weatherdb?sslmode=disable
+      - TEMPLATE_DIR=/app/internal/templates
+      - PGHOST=db
+      - PGPORT=5432
+      - PGUSER=postgres
+      - PGPASSWORD=postgres
+    entrypoint: ["/app/wait-for-postgres.sh"]
+    command: ["./app"]
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  test-runner:
+    build: .
+    depends_on:
+      - db
+    environment:
+      - TEST_DB_URL=postgres://postgres:postgres@db:5432/weatherdb_test?sslmode=disable
+      - TEMPLATE_DIR=/app/internal/templates
+      - APP_BASE_URL=https://example.com
+      - PGHOST=db
+      - PGPORT=5432
+      - PGUSER=postgres
+      - PGPASSWORD=postgres
+    working_dir: /app
+    entrypoint: ["/app/wait-for-postgres.sh"]
+    command: ["go", "test", "-v", "./..."]
+
+volumes:
+  pgdata:
+  

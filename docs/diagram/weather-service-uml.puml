@@ -1,0 +1,177 @@
+@startuml Weather Subscription Service
+
+!define RECTANGLE class
+
+' === FRONTEND ===
+package "Frontend Layer" {
+    class WeatherDashboard {
+        +getCityWeather(city: string)
+        +displayWeather(data: WeatherData)
+        +validateInput()
+    }
+    
+    class SubscriptionForm {
+        +submitSubscription(email, city, frequency)
+        +validateForm()
+        +showStatus(message)
+    }
+}
+
+' === BACKEND API LAYER ===
+package "Presentation Layer" {
+    class WeatherController {
+        +getWeather(city: string): WeatherData
+        +handleRequest(request: HttpRequest)
+    }
+    
+    class SubscriptionController {
+        +createSubscription(request: SubscriptionRequest)
+        +confirmSubscription(token: string)
+        +unsubscribe(token: string)
+    }
+}
+
+' === APPLICATION LAYER ===
+package "Application Layer" {
+    class WeatherService {
+        -cache: CacheManager
+        -apiClient: WeatherAPIClient
+        +getWeather(city: string): WeatherData
+        +getCachedWeather(city: string): WeatherData
+    }
+    
+    class SubscriptionService {
+        -repository: SubscriptionRepository
+        -emailService: EmailService
+        +createSubscription(req: SubscriptionRequest): Subscription
+        +confirmSubscription(token: string): boolean
+        +unsubscribe(token: string): boolean
+    }
+    
+    class EmailScheduler {
+        -subscriptionService: SubscriptionService
+        -weatherService: WeatherService
+        -emailService: EmailService
+        +runScheduler()
+        +processSubscriptions(subs: []Subscription)
+        +sendWeatherUpdates()
+    }
+}
+
+' === DOMAIN LAYER ===
+package "Domain Layer" {
+    class Subscription {
+        +id: int64
+        +email: string
+        +city: string
+        +frequency: string
+        +confirmed: boolean
+        +token: string
+        +createdAt: timestamp
+        +confirmedAt: timestamp
+    }
+    
+    class WeatherData {
+        +temperature: float64
+        +humidity: int
+        +description: string
+        +cachedAt: time.Time
+    }
+}
+
+' === INFRASTRUCTURE LAYER ===
+package "Infrastructure Layer" {
+    class SubscriptionRepository {
+        -db: PostgreSQL
+        +create(sub: Subscription): error
+        +findByEmail(email: string): Subscription
+        +findByToken(token: string): Subscription
+        +findConfirmedByFrequency(freq: string): []Subscription
+        +update(sub: Subscription): error
+        +delete(id: int64): error
+    }
+    
+    class WeatherAPIClient {
+        -httpClient: HTTPClient
+        -apiKey: string
+        +fetchWeather(city: string): WeatherData
+        +buildAPIURL(city: string): string
+    }
+    
+    class EmailService {
+        -smtpClient: SMTPClient
+        +sendConfirmation(email, token: string): error
+        +sendWeatherUpdate(sub: Subscription, weather: WeatherData): error
+        +generateHTMLTemplate(data: interface{}): string
+    }
+    
+    class CacheManager {
+        -cache: Map[string, CachedWeather]
+        -mutex: RWMutex
+        +set(key: string, value: WeatherData, ttl: Duration)
+        +get(key: string): (WeatherData, boolean)
+        +cleanup()
+    }
+}
+
+' === EXTERNAL SERVICES ===
+package "External Services" {
+    class WeatherAPI_com {
+        +getCurrentWeather(city: string): APIResponse
+    }
+    
+    class SMTPServer {
+        +sendEmail(to, subject, body: string): error
+    }
+    
+    class PostgreSQLDatabase {
+        +query(sql: string): ResultSet
+        +execute(sql: string): error
+    }
+}
+
+' === RELATIONSHIPS ===
+WeatherDashboard --> WeatherController : HTTP Request
+SubscriptionForm --> SubscriptionController : HTTP Request
+
+WeatherController --> WeatherService
+SubscriptionController --> SubscriptionService
+
+WeatherService --> CacheManager
+WeatherService --> WeatherAPIClient
+WeatherService ..> WeatherData : creates
+
+SubscriptionService --> SubscriptionRepository
+SubscriptionService --> EmailService
+SubscriptionService ..> Subscription : creates
+
+EmailScheduler --> SubscriptionService
+EmailScheduler --> WeatherService
+EmailScheduler --> EmailService
+
+SubscriptionRepository --> PostgreSQLDatabase
+WeatherAPIClient --> WeatherAPI_com
+EmailService --> SMTPServer
+
+SubscriptionRepository ..> Subscription : manages
+CacheManager ..> WeatherData : caches
+
+' === NOTES ===
+note right of EmailScheduler
+  Runs as Go Goroutine
+  Hourly: every hour
+  Daily: at 8 AM
+end note
+
+note right of CacheManager
+  In-Memory Cache
+  TTL: 5 minutes
+  Thread-safe with RWMutex
+end note
+
+note bottom of WeatherAPIClient
+  External API Integration
+  Rate limiting & retry logic
+end note
+
+@enduml
