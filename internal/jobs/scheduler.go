@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"weatherapi/internal/contracts"
 	"weatherapi/internal/services/mailer_service"
 	"weatherapi/internal/services/subscription_service"
 	"weatherapi/internal/services/weather_service"
@@ -93,8 +94,13 @@ func (s *Scheduler) sendWeatherUpdates(frequency string) {
 			log.Printf("Weather fetch error for %s: %v", subscription.City, err)
 			continue
 		}
+		weatherData := &contracts.WeatherData{
+			Temperature: weather.Temperature,
+			Humidity:    weather.Humidity,
+			Description: weather.Description,
+		}
 
-		err = s.mailerService.SendWeatherEmail(ctx, subscription.Email, subscription.City, weather, subscription.Token)
+		err = s.mailerService.SendWeatherEmail(ctx, subscription.Email, subscription.City, weatherData, subscription.Token)
 		if err != nil {
 			log.Printf("Failed to send weather email to %s: %v", subscription.Email, err)
 		} else {

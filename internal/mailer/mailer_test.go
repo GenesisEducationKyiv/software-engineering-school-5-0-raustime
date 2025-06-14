@@ -5,9 +5,9 @@ import (
 	"log"
 	"os"
 	"testing"
+	"weatherapi/internal/contracts"
 	"weatherapi/internal/mailer"
 	"weatherapi/internal/openweatherapi"
-	"weatherapi/internal/services/weather_service"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -102,10 +102,10 @@ func TestSendWeatherEmail(t *testing.T) {
 		Humidity:    70,
 	}
 
-	weatherData := &weather_service.WeatherData{
-		Description: data.Description,
+	weatherData := &contracts.WeatherData{
 		Temperature: data.Temperature,
 		Humidity:    data.Humidity,
+		Description: data.Description,
 	}
 
 	err := mailer.SendWeatherEmailWithSender(mock, "user@example.com", "Berlin", weatherData, "https://example.com", "tok789")
@@ -140,7 +140,7 @@ func TestSendWeatherEmail_WithTempDir(t *testing.T) {
 		Humidity:    85,
 	}
 
-	weatherData := &weather_service.WeatherData{
+	weatherData := &contracts.WeatherData{
 		Description: data.Description,
 		Temperature: data.Temperature,
 		Humidity:    data.Humidity,
@@ -175,7 +175,7 @@ func TestSendWeatherEmail_InvalidTemplate(t *testing.T) {
 		Humidity:    60,
 	}
 
-	weatherData := &weather_service.WeatherData{
+	weatherData := &contracts.WeatherData{
 		Description: data.Description,
 		Temperature: data.Temperature,
 		Humidity:    data.Humidity,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"weatherapi/internal/contracts"
 	"weatherapi/internal/openweatherapi"
 )
 
@@ -12,24 +13,17 @@ var (
 )
 
 type IWeatherService interface {
-	GetCurrentWeather(city string) (*WeatherData, error)
+	GetCurrentWeather(city string) (*contracts.WeatherData, error)
 }
 
-// WeatherData represents weather information
-type WeatherData struct {
-	Temperature float64
-	Humidity    float64
-	Description string
-}
-
-// weatherService implements WeatherService
+// weatherService implements IWeatherService
 type weatherService struct {
 	weatherAPI IWeatherAPI
 }
 
 // WeatherAPI defines weather API interface
 type IWeatherAPI interface {
-	FetchWeather(city string) (*openweatherapi.WeatherData, error)
+	FetchWeather(city string) (*contracts.WeatherData, error)
 }
 
 // NewWeatherService creates a new weather service
@@ -40,7 +34,7 @@ func NewWeatherService() IWeatherService {
 }
 
 // GetWeather retrieves weather data for a city
-func (s *weatherService) GetWeather(ctx context.Context, city string) (*WeatherData, error) {
+func (s *weatherService) GetWeather(ctx context.Context, city string) (*contracts.WeatherData, error) {
 	data, err := s.weatherAPI.FetchWeather(city)
 	if err != nil {
 		if errors.Is(err, openweatherapi.ErrCityNotFound) {
@@ -49,7 +43,7 @@ func (s *weatherService) GetWeather(ctx context.Context, city string) (*WeatherD
 		return nil, err
 	}
 
-	return &WeatherData{
+	return &contracts.WeatherData{
 		Temperature: data.Temperature,
 		Humidity:    data.Humidity,
 		Description: data.Description,
@@ -57,14 +51,21 @@ func (s *weatherService) GetWeather(ctx context.Context, city string) (*WeatherD
 }
 
 // GetCurrentWeather retrieves weather data for a city (implements IWeatherService)
-func (s *weatherService) GetCurrentWeather(city string) (*WeatherData, error) {
-	// Use context.Background() since interface does not provide context
+func (s *weatherService) GetCurrentWeather(city string) (*contracts.WeatherData, error) {
 	return s.GetWeather(context.Background(), city)
 }
 
 // openWeatherAPIAdapter adapts the external API to our interface
 type openWeatherAPIAdapter struct{}
 
-func (a *openWeatherAPIAdapter) FetchWeather(city string) (*openweatherapi.WeatherData, error) {
-	return openweatherapi.FetchWeather(city)
+func (a *openWeatherAPIAdapter) FetchWeather(city string) (*contracts.WeatherData, error) {
+	data, err := openweatherapi.FetchWeather(city)
+	if err != nil {
+		return nil, err
+	}
+	return &contracts.WeatherData{
+		Temperature: data.Temperature,
+		Humidity:    data.Humidity,
+		Description: data.Description,
+	}, nil
 }
