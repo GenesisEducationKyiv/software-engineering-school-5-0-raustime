@@ -4,12 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"weatherapi/internal/apierrors"
 	"weatherapi/internal/contracts"
-	"weatherapi/internal/openweatherapi"
-)
-
-var (
-	ErrCityNotFound = errors.New("city not found")
 )
 
 type IWeatherService interface {
@@ -26,10 +22,10 @@ type IWeatherAPI interface {
 	FetchWeather(city string) (*contracts.WeatherData, error)
 }
 
-// NewWeatherService creates a new weather service
-func NewWeatherService() IWeatherService {
+// NewWeatherService створює новий weatherService з переданим API
+func NewWeatherService(api IWeatherAPI) IWeatherService {
 	return &weatherService{
-		weatherAPI: &openWeatherAPIAdapter{}, // Adapter pattern
+		weatherAPI: api,
 	}
 }
 
@@ -37,8 +33,8 @@ func NewWeatherService() IWeatherService {
 func (s *weatherService) GetWeather(ctx context.Context, city string) (*contracts.WeatherData, error) {
 	data, err := s.weatherAPI.FetchWeather(city)
 	if err != nil {
-		if errors.Is(err, openweatherapi.ErrCityNotFound) {
-			return nil, ErrCityNotFound
+		if errors.Is(err, apierrors.ErrCityNotFound) {
+			return nil, apierrors.ErrCityNotFound
 		}
 		return nil, err
 	}
@@ -53,19 +49,4 @@ func (s *weatherService) GetWeather(ctx context.Context, city string) (*contract
 // GetCurrentWeather retrieves weather data for a city (implements IWeatherService)
 func (s *weatherService) GetCurrentWeather(city string) (*contracts.WeatherData, error) {
 	return s.GetWeather(context.Background(), city)
-}
-
-// openWeatherAPIAdapter adapts the external API to our interface
-type openWeatherAPIAdapter struct{}
-
-func (a *openWeatherAPIAdapter) FetchWeather(city string) (*contracts.WeatherData, error) {
-	data, err := openweatherapi.FetchWeather(city)
-	if err != nil {
-		return nil, err
-	}
-	return &contracts.WeatherData{
-		Temperature: data.Temperature,
-		Humidity:    data.Humidity,
-		Description: data.Description,
-	}, nil
 }

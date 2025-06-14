@@ -11,6 +11,7 @@ import (
 	"weatherapi/internal/jobs"
 	"weatherapi/internal/mailer"
 
+	"weatherapi/internal/adapters"
 	"weatherapi/internal/server"
 	"weatherapi/internal/services/mailer_service"
 	"weatherapi/internal/services/subscription_service"
@@ -59,8 +60,8 @@ func BuildContainer() (*Container, error) {
 	}
 
 	// Init Weather API adapter
-
-	weatherService := weather_service.NewWeatherService()
+	api := &adapters.OpenWeatherAdapter{}
+	weatherService := weather_service.NewWeatherService(api)
 
 	// Init Mailer
 	emailSender := &mailer.SMTPSender{}

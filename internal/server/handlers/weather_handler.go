@@ -3,7 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-
+	"weatherapi/internal/apierrors"
 	"weatherapi/internal/services/weather_service"
 )
 
@@ -42,7 +42,7 @@ func (h *WeatherHandler) GetWeather(w http.ResponseWriter, r *http.Request) {
 	weather, err := h.weatherService.GetCurrentWeather(city)
 	if err != nil {
 		switch err {
-		case weather_service.ErrCityNotFound:
+		case apierrors.ErrCityNotFound:
 			http.Error(w, "City not found", http.StatusNotFound)
 		default:
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
