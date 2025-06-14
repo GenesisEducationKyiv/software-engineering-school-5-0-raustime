@@ -1,18 +1,26 @@
 package main
 
 import (
+	"context"
 	"log"
-	"weatherapi/internal"
+	"os"
+	"os/signal"
+	"syscall"
+	"weatherapi/internal/application"
 )
 
 func main() {
-	app, err := internal.New()
+	app, err := application.New()
 	if err != nil {
 		log.Fatalf("Failed to create application: %v", err)
 	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	defer func() {
-		if err := app.Close(); err != nil {
-			log.Printf("Failed to close application: %v", err)
+		if cerr := app.Close(ctx); cerr != nil {
+			log.Printf("Failed to close application: %v", cerr)
 		}
 	}()
 

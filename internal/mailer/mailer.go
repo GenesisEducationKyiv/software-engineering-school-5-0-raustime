@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	"os"
-	"weatherapi/internal/openweatherapi"
+	"weatherapi/internal/contracts"
 )
 
 type confirmationData struct {
@@ -16,7 +16,7 @@ type confirmationData struct {
 }
 
 var (
-	Email       EmailSender = &SMTPSender{}
+	Email       contracts.IEmailSender = &SMTPSender{}
 	TemplateDir string
 )
 
@@ -58,10 +58,10 @@ func GetTemplatePath(filename string) string {
 	return fullPath
 }
 
-func SendConfirmationEmailWithSender(sender EmailSender, to, token string) error {
+func SendConfirmationEmailWithSender(sender contracts.IEmailSender, appBaseURL string, to, token string) error {
 	log.Printf("DEBUG: SendConfirmationEmailWithSender called for: %s", to)
 
-	apiHost := os.Getenv("APP_BASE_URL")
+	apiHost := appBaseURL
 	link := fmt.Sprintf("%s/api/confirm/%s", apiHost, token)
 	data := confirmationData{ConfirmURL: link}
 
@@ -84,7 +84,7 @@ func SendConfirmationEmailWithSender(sender EmailSender, to, token string) error
 	return sender.Send(to, "Confirm your subscription", body.String())
 }
 
-func SendWeatherEmailWithSender(sender EmailSender, to, city string, weather *openweatherapi.WeatherData, baseURL, token string) error {
+func SendWeatherEmailWithSender(sender contracts.IEmailSender, to, city string, weather *contracts.WeatherData, baseURL, token string) error {
 	log.Printf("DEBUG: SendWeatherEmailWithSender called for: %s, city: %s", to, city)
 
 	tmplPath := GetTemplatePath("weather_email.html")

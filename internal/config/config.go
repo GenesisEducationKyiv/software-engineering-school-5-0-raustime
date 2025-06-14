@@ -8,6 +8,7 @@ import (
 )
 
 type Config struct {
+	AppBaseURL      string
 	Port            string
 	DatabaseURL     string
 	DatabaseTestURL string
@@ -28,6 +29,7 @@ func Load() (*Config, error) {
 	}
 
 	cfg := &Config{
+		AppBaseURL:      getEnv("APP_BASE_URL", "http://localhost:8080"),
 		Port:            getEnv("PORT", "8080"),
 		DatabaseURL:     getEnv("DB_URL", ""),
 		DatabaseTestURL: getEnv("TEST_DB_URL", ""),
@@ -37,7 +39,7 @@ func Load() (*Config, error) {
 		SMTPUser:        getEnv("SMTP_USER", ""),
 		SMTPPassword:    getEnv("SMTP_PASSWORD", ""),
 		Environment:     strings.ToLower(getEnv("ENVIRONMENT", "development")),
-		BunDebugMode:    getEnv("BUNDEBUG", "false"),
+		BunDebugMode:    getEnv("BUNDEBUG", "0"),
 	}
 
 	return cfg, nil
@@ -68,7 +70,7 @@ func (c *Config) GetDatabaseURL() string {
 
 // IsBunDebugEnabled перевіряє чи включений debug режим для Bun ORM
 func (c *Config) IsBunDebugEnabled() bool {
-	return strings.ToLower(c.BunDebugMode) == "true"
+	return strings.ToLower(c.BunDebugMode) == "1"
 }
 
 // Validate перевіряє чи всі обов'язкові конфігурації встановлені
