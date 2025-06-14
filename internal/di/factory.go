@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"weatherapi/internal/config"
 	"weatherapi/internal/db/migration"
@@ -64,7 +65,13 @@ func BuildContainer() (*Container, error) {
 	weatherService := weather_service.NewWeatherService(api)
 
 	// Init Mailer
-	emailSender := &mailer.SMTPSender{}
+
+	emailSender := mailer.NewSMTPSender(
+		cfg.SMTPUser,
+		cfg.SMTPPassword,
+		cfg.SMTPHost,
+		strconv.Itoa(cfg.SMTPPort),
+	)
 	mailerService := mailer_service.NewMailerService(emailSender, cfg.AppBaseURL)
 
 	// Init SubscriptionService

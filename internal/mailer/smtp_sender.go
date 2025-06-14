@@ -4,25 +4,34 @@ import (
 	"fmt"
 	"log"
 	"net/smtp"
-	"os"
 )
 
-type SMTPSender struct{}
+type SMTPSender struct {
+	From     string
+	Password string
+	Host     string
+	Port     string
+}
+
+func NewSMTPSender(from, pass, host, port string) *SMTPSender {
+	return &SMTPSender{
+		From:     from,
+		Password: pass,
+		Host:     host,
+		Port:     port,
+	}
+}
 
 func (s *SMTPSender) Send(to, subject, htmlBody string) error {
-	from := os.Getenv("SMTP_USER")
-	pass := os.Getenv("SMTP_PASS")
-	host := os.Getenv("SMTP_HOST")
-	port := os.Getenv("SMTP_PORT")
-	addr := fmt.Sprintf("%s:%s", host, port)
+	addr := fmt.Sprintf("%s:%s", s.Host, s.Port)
 
 	msg := fmt.Sprintf("Subject: %s\r\n", subject) +
 		"MIME-Version: 1.0\r\n" +
 		"Content-Type: text/html; charset=\"UTF-8\"\r\n\r\n" +
 		htmlBody
 
-	auth := smtp.PlainAuth("", from, pass, host)
-	err := smtp.SendMail(addr, auth, from, []string{to}, []byte(msg))
+	auth := smtp.PlainAuth("", s.From, s.Password, s.Host)
+	err := smtp.SendMail(addr, auth, s.From, []string{to}, []byte(msg))
 	if err != nil {
 		log.Printf("Error sending HTML email to %s: %v", to, err)
 	}

@@ -75,12 +75,13 @@ func cleanupTemplates() error {
 func TestSendConfirmationEmail(t *testing.T) {
 	mock := &mailer.MockSender{}
 
-	// Зберігаємо старий глобальний sender
-	oldEmail := mailer.Email
-	mailer.Email = mock
-	defer func() { mailer.Email = oldEmail }()
-
-	err := mailer.SendConfirmationEmailWithSender(mock, "test@example.com", "token123")
+	// Правильний виклик з appBaseURL
+	err := mailer.SendConfirmationEmailWithSender(
+		mock,
+		"https://example.com",
+		"test@example.com",
+		"token123",
+	)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "test@example.com", mock.LastTo)

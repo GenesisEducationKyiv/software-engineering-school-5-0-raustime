@@ -58,10 +58,10 @@ func GetTemplatePath(filename string) string {
 	return fullPath
 }
 
-func SendConfirmationEmailWithSender(sender contracts.IEmailSender, to, token string) error {
+func SendConfirmationEmailWithSender(sender contracts.IEmailSender, appBaseURL string, to, token string) error {
 	log.Printf("DEBUG: SendConfirmationEmailWithSender called for: %s", to)
 
-	apiHost := os.Getenv("APP_BASE_URL")
+	apiHost := appBaseURL
 	link := fmt.Sprintf("%s/api/confirm/%s", apiHost, token)
 	data := confirmationData{ConfirmURL: link}
 
@@ -82,13 +82,6 @@ func SendConfirmationEmailWithSender(sender contracts.IEmailSender, to, token st
 
 	log.Printf("DEBUG: Sending confirmation email via sender")
 	return sender.Send(to, "Confirm your subscription", body.String())
-}
-
-// WeatherData represents weather information for an email.
-type WeatherData struct {
-	Description string
-	Temperature float64
-	Humidity    float64
 }
 
 func SendWeatherEmailWithSender(sender contracts.IEmailSender, to, city string, weather *contracts.WeatherData, baseURL, token string) error {

@@ -37,7 +37,7 @@ func NewMailerService(emailSender contracts.IEmailSender, baseURL string) IMaile
 
 // SendConfirmationEmail sends confirmation email
 func (s *mailerService) SendConfirmationEmail(ctx context.Context, email, token string) error {
-	return mailer.SendConfirmationEmailWithSender(s.emailSender, email, token)
+	return mailer.SendConfirmationEmailWithSender(s.emailSender, s.AppBaseURL, email, token)
 }
 
 // SendWeatherEmail sends weather update email
