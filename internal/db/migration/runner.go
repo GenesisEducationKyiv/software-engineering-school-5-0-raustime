@@ -83,8 +83,6 @@ func (r *Runner) createMigrationsTable(ctx context.Context) error {
 	return err
 }
 
-// loadMigrations loads all migration files from the migrations directory
-// loadMigrations loads all migration files from the migrations directory
 func (r *Runner) loadMigrations() ([]Migration, error) {
 	var migrations []Migration
 
@@ -118,7 +116,6 @@ func (r *Runner) loadMigrations() ([]Migration, error) {
 			Name:    name,
 			UpSQL:   string(upSQL),
 		})
-
 		return nil
 	})
 
