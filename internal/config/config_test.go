@@ -245,7 +245,7 @@ func TestConfig_DefaultValues(t *testing.T) {
 				if err := os.Unsetenv(envVar); err != nil {
 					t.Logf("warning: failed to unset envVar var %s: %v", envVar, err)
 				}
-				} else {
+			} else {
 				if err := os.Setenv(envVar, originalValue); err != nil {
 					t.Fatalf("failed to restore env var %s: %v", envVar, err)
 				}
@@ -254,15 +254,14 @@ func TestConfig_DefaultValues(t *testing.T) {
 	}()
 
 	// Set required DATABASE_URL
-	os.Setenv("DATABASE_URL", "postgres://user:pass@localhost/db")
 	if err := os.Setenv("DATABASE_URL", "postgres://user:pass@localhost/db"); err != nil {
 		t.Fatalf("failed to restore DATABASE_URL")
 	}
 	defer func() {
-    if err := os.Unsetenv("DATABASE_URL"); err != nil {
-        t.Logf("failed to unset env: %v", err)
-    }
-}()
+		if err := os.Unsetenv("DATABASE_URL"); err != nil {
+			t.Logf("failed to unset env: %v", err)
+		}
+	}()
 
 	cfg, err := Load()
 	if err != nil {
@@ -302,9 +301,9 @@ func TestConfig_EnvironmentVariableOverrides(t *testing.T) {
 	defer func() {
 		for key := range testVars {
 			if err := os.Unsetenv(key); err != nil {
-					t.Logf("warning: failed to unset key var %s: %v", key, err)
+				t.Logf("warning: failed to unset key var %s: %v", key, err)
 			}
-			
+
 		}
 	}()
 
