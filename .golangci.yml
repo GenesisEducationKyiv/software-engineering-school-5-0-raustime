@@ -1,18 +1,21 @@
 run:
   timeout: 5m
+  skip-dirs:
+    - vendor
+    - "pkg/mod"
+    - "src"
+  skip-files:
+    - ".*_gen.go"
+    - ".*.pb.go"
 
 linters:
   enable:
-    - unused
     - govet
+    - gofmt
     - errcheck
     - staticcheck
-    - gofmt
-    - goimports
-    - ineffassign
-  disable:
-    - deadcode
-    - golint
+    - revive
+    - unused
 
 issues:
   exclude-use-default: false
