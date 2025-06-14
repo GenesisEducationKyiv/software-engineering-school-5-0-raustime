@@ -286,13 +286,18 @@ func TestConfig_EnvironmentVariableOverrides(t *testing.T) {
 	}
 
 	for key, value := range testVars {
-		os.Setenv(key, value)
+		if err := os.Setenv(key, value); err != nil {
+			t.Fatalf("failed to restore key var %s: %v", key, err)
+		}
 	}
 
 	// Clean up after test
 	defer func() {
 		for key := range testVars {
-			os.Unsetenv(key)
+			if err := os.Unsetenv(key); err != nil {
+					t.Logf("warning: failed to unset key var %s: %v", key, err)
+			}
+			
 		}
 	}()
 
