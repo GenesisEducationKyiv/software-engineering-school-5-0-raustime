@@ -2,31 +2,31 @@ package server
 
 import (
 	"net/http"
-	"strings"
-	"time"
 
 	"weatherapi/internal/server/handlers"
 	"weatherapi/internal/server/middleware"
-	"weatherapi/internal/services"
+	"weatherapi/internal/services/mailer_service"
+	"weatherapi/internal/services/subscription_service"
+	"weatherapi/internal/services/weather_service"
 )
 
 // Router represents HTTP router following Single Responsibility Principle
 type Router struct {
-	mux              *http.ServeMux
-	weatherHandler   *handlers.WeatherHandler
+	mux                 *http.ServeMux
+	weatherHandler      *handlers.WeatherHandler
 	subscriptionHandler *handlers.SubscriptionHandler
 }
 
 // NewRouter creates a new router with all handlers
-func NewRouter(weatherService services.WeatherService, subscriptionService services.SubscriptionService, mailerService services.MailerService) http.Handler {
+func NewRouter(weatherService weather_service.IWeatherService, subscriptionService subscription_service.ISubscriptionService, mailerService mailer_service.IMailerService) http.Handler {
 	router := &Router{
-		mux:              http.NewServeMux(),
-		weatherHandler:   handlers.NewWeatherHandler(weatherService),
+		mux:                 http.NewServeMux(),
+		weatherHandler:      handlers.NewWeatherHandler(weatherService),
 		subscriptionHandler: handlers.NewSubscriptionHandler(subscriptionService, mailerService),
 	}
 
 	router.setupRoutes()
-	
+
 	// Apply middleware
 	return middleware.Chain(
 		router.mux,

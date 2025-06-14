@@ -5,28 +5,38 @@ import (
 	"log"
 	"time"
 
-	"weatherapi/internal/services"
+	"weatherapi/internal/services/mailer_service"
+	"weatherapi/internal/services/subscription_service"
+	"weatherapi/internal/services/weather_service"
 )
+
+// IJobScheduler визначає інтерфейс для планувальника задач
+type IJobScheduler interface {
+	Start()
+	Stop()
+	weatherNotificationLoop()
+	sendWeatherUpdates(frequency string)
+}
 
 // Scheduler manages background jobs
 type Scheduler struct {
-	subscriptionService services.SubscriptionService
-	mailerService       services.MailerService
-	weatherService      services.WeatherService
-	stopChan           chan struct{}
+	subscriptionService subscription_service.ISubscriptionService
+	mailerService       mailer_service.IMailerService
+	weatherService      weather_service.IWeatherService
+	stopChan            chan struct{}
 }
 
 // NewScheduler creates a new job scheduler
 func NewScheduler(
-	subscriptionService services.SubscriptionService,
-	mailerService services.MailerService,
-	weatherService services.WeatherService,
+	subscriptionService subscription_service.ISubscriptionService,
+	mailerService mailer_service.IMailerService,
+	weatherService weather_service.IWeatherService,
 ) *Scheduler {
 	return &Scheduler{
 		subscriptionService: subscriptionService,
 		mailerService:       mailerService,
 		weatherService:      weatherService,
-		stopChan:           make(chan struct{}),
+		stopChan:            make(chan struct{}),
 	}
 }
 
@@ -49,11 +59,11 @@ func (s *Scheduler) weatherNotificationLoop() {
 		select {
 		case <-ticker.C:
 			now := time.Now()
-			
+
 			// Send hourly updates (00 minutes)
 			if now.Minute() == 0 {
 				s.sendWeatherUpdates("hourly")
-				
+
 				// Send daily updates at 8:00 AM
 				if now.Hour() == 8 {
 					s.sendWeatherUpdates("daily")
@@ -78,7 +88,7 @@ func (s *Scheduler) sendWeatherUpdates(frequency string) {
 	}
 
 	for _, subscription := range subscriptions {
-		weather, err := s.weatherService.GetWeather(ctx, subscription.City)
+		weather, err := s.weatherService.GetCurrentWeather(subscription.City)
 		if err != nil {
 			log.Printf("Weather fetch error for %s: %v", subscription.City, err)
 			continue

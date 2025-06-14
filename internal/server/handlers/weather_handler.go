@@ -4,16 +4,16 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"weatherapi/internal/services"
+	"weatherapi/internal/services/weather_service"
 )
 
 // WeatherHandler handles weather-related requests
 type WeatherHandler struct {
-	weatherService services.WeatherService
+	weatherService weather_service.IWeatherService
 }
 
 // NewWeatherHandler creates a new weather handler
-func NewWeatherHandler(weatherService services.WeatherService) *WeatherHandler {
+func NewWeatherHandler(weatherService weather_service.IWeatherService) *WeatherHandler {
 	return &WeatherHandler{
 		weatherService: weatherService,
 	}
@@ -39,10 +39,10 @@ func (h *WeatherHandler) GetWeather(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	weather, err := h.weatherService.GetWeather(r.Context(), city)
+	weather, err := h.weatherService.GetCurrentWeather(city)
 	if err != nil {
 		switch err {
-		case services.ErrCityNotFound:
+		case weather_service.ErrCityNotFound:
 			http.Error(w, "City not found", http.StatusNotFound)
 		default:
 			http.Error(w, "Internal server error", http.StatusInternalServerError)

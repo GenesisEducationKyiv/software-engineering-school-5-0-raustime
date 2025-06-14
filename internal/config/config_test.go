@@ -109,10 +109,10 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "valid config",
 			config: &Config{
-				Port:        "8080",
-				Environment: "development",
-				DatabaseURL: "postgres://user:pass@localhost/db",
-				BunDebug:    false,
+				Port:         "8080",
+				Environment:  "development",
+				DatabaseURL:  "postgres://user:pass@localhost/db",
+				BunDebugMode: "false",
 			},
 			expectErr: false,
 		},
@@ -195,14 +195,14 @@ func TestConfig_IsBunDebugEnabled(t *testing.T) {
 		{
 			name: "debug enabled",
 			config: &Config{
-				BunDebug: true,
+				BunDebugMode: "true",
 			},
 			expected: true,
 		},
 		{
 			name: "debug disabled",
 			config: &Config{
-				BunDebug: false,
+				BunDebugMode: "false",
 			},
 			expected: false,
 		},
@@ -257,8 +257,8 @@ func TestConfig_DefaultValues(t *testing.T) {
 		t.Errorf("expected default environment development, got %s", cfg.Environment)
 	}
 
-	if cfg.BunDebug != false {
-		t.Errorf("expected default BunDebug false, got %v", cfg.BunDebug)
+	if cfg.BunDebugMode != "false" {
+		t.Errorf("expected default BunDebug false, got %v", cfg.BunDebugMode)
 	}
 }
 
@@ -300,7 +300,7 @@ func TestConfig_EnvironmentVariableOverrides(t *testing.T) {
 		t.Errorf("expected production database URL, got %s", cfg.DatabaseURL)
 	}
 
-	if cfg.BunDebug != true {
-		t.Errorf("expected BunDebug true, got %v", cfg.BunDebug)
+	if cfg.BunDebugMode != "true" {
+		t.Errorf("expected BunDebug true, got %v", cfg.BunDebugMode)
 	}
 }

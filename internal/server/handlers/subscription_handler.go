@@ -2,20 +2,28 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
-	"weatherapi/internal/services"
+	"weatherapi/internal/services/mailer_service"
+	"weatherapi/internal/services/subscription_service"
+)
+
+var (
+	ErrInvalidEmail     = errors.New("invalid email")
+	ErrInvalidCity      = errors.New("invalid city")
+	ErrInvalidFrequency = errors.New("invalid frequency")
 )
 
 // SubscriptionHandler handles subscription-related requests
 type SubscriptionHandler struct {
-	subscriptionService services.SubscriptionService
-	mailerService       services.MailerService
+	subscriptionService subscription_service.ISubscriptionService
+	mailerService       mailer_service.IMailerService
 }
 
 // NewSubscriptionHandler creates a new subscription handler
-func NewSubscriptionHandler(subscriptionService services.SubscriptionService, mailerService services.MailerService) *SubscriptionHandler {
+func NewSubscriptionHandler(subscriptionService subscription_service.ISubscriptionService, mailerService mailer_service.IMailerService) *SubscriptionHandler {
 	return &SubscriptionHandler{
 		subscriptionService: subscriptionService,
 		mailerService:       mailerService,
@@ -45,7 +53,7 @@ func (h *SubscriptionHandler) Subscribe(w http.ResponseWriter, r *http.Request) 
 	subscription, err := h.subscriptionService.CreateSubscription(r.Context(), req.Email, req.City, req.Frequency)
 	if err != nil {
 		switch err {
-		case services.ErrAlreadySubscribed:
+		case subscription_service.ErrAlreadySubscribed:
 			http.Error(w, "Email already subscribed", http.StatusConflict)
 		default:
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -71,9 +79,9 @@ func (h *SubscriptionHandler) Confirm(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.subscriptionService.ConfirmSubscription(r.Context(), token); err != nil {
 		switch err {
-		case services.ErrSubscriptionNotFound:
+		case subscription_service.ErrSubscriptionNotFound:
 			http.Error(w, "Subscription not found", http.StatusNotFound)
-		case services.ErrInvalidToken:
+		case subscription_service.ErrInvalidToken:
 			http.Error(w, "Invalid token", http.StatusBadRequest)
 		default:
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -94,9 +102,9 @@ func (h *SubscriptionHandler) Unsubscribe(w http.ResponseWriter, r *http.Request
 
 	if err := h.subscriptionService.DeleteSubscription(r.Context(), token); err != nil {
 		switch err {
-		case services.ErrSubscriptionNotFound:
+		case subscription_service.ErrSubscriptionNotFound:
 			http.Error(w, "Subscription not found", http.StatusNotFound)
-		case services.ErrInvalidToken:
+		case subscription_service.ErrInvalidToken:
 			http.Error(w, "Invalid token", http.StatusBadRequest)
 		default:
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -120,9 +128,3 @@ func (h *SubscriptionHandler) validateSubscriptionRequest(req SubscriptionReques
 	}
 	return nil
 }
-
-var (
-	ErrInvalidEmail     = errors.New("invalid email")
-	ErrInvalidCity      = errors.New("invalid city")
-	ErrInvalidFrequency = errors.New("invalid frequency")
-)
