@@ -15,7 +15,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.22  # замініть на вашу версію Go
+          go-version: 1.23  
 
       - name: Install golangci-lint
         uses: golangci/golangci-lint-action@v3

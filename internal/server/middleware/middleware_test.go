@@ -25,7 +25,9 @@ func TestChain(t *testing.T) {
 	// Create base handler
 	baseHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		if _, err := w.Write([]byte("OK")); err != nil {
+			http.Error(w, "failed to write response", http.StatusInternalServerError)
+		}
 	})
 
 	// Chain middlewares
@@ -119,7 +121,9 @@ func TestCORS(t *testing.T) {
 func TestLogging(t *testing.T) {
 	baseHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		if _, err := w.Write([]byte("OK")); err != nil {
+			http.Error(w, "failed to write response", http.StatusInternalServerError)
+		}
 	})
 
 	loggingHandler := Logging()(baseHandler)
@@ -148,7 +152,9 @@ func TestRecovery(t *testing.T) {
 			name: "normal handler",
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte("OK"))
+				if _, err := w.Write([]byte("OK")); err != nil {
+					http.Error(w, "failed to write response", http.StatusInternalServerError)
+				}
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   "OK",

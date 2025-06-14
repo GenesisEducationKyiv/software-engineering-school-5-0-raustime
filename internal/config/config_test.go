@@ -18,9 +18,13 @@ func TestConfig_Load(t *testing.T) {
 	defer func() {
 		for key, value := range originalVars {
 			if value == "" {
-				os.Unsetenv(key)
+				if err := os.Unsetenv(key); err != nil {
+					t.Logf("warning: failed to unset key var %s: %v", key, err)
+				}
 			} else {
-				os.Setenv(key, value)
+				if err := os.Setenv(key, value); err != nil {
+					t.Fatalf("failed to restore key var %s: %v", key, err)
+				}
 			}
 		}
 	}()
@@ -62,11 +66,17 @@ func TestConfig_Load(t *testing.T) {
 			// Clear all env vars first
 			for key := range originalVars {
 				os.Unsetenv(key)
+				if err := os.Unsetenv(key); err != nil {
+					t.Logf("warning: failed to unset key var %s: %v", key, err)
+				}
 			}
 
 			// Set test env vars
 			for key, value := range tt.envVars {
 				os.Setenv(key, value)
+				if err := os.Setenv(key, value); err != nil {
+					t.Fatalf("failed to restore key var %s: %v", key, err)
+				}
 			}
 
 			cfg, err := Load()
@@ -225,7 +235,9 @@ func TestConfig_DefaultValues(t *testing.T) {
 
 	for _, envVar := range envVars {
 		originalValues[envVar] = os.Getenv(envVar)
-		os.Unsetenv(envVar)
+		if err := os.Unsetenv(envVar); err != nil {
+			t.Fatalf("failed to unset env var %s: %v", envVar, err)
+		}
 	}
 
 	// Clean up after test
@@ -234,7 +246,9 @@ func TestConfig_DefaultValues(t *testing.T) {
 			if originalValue == "" {
 				os.Unsetenv(envVar)
 			} else {
-				os.Setenv(envVar, originalValue)
+				if err := os.Setenv(envVar, originalValue); err != nil {
+					t.Fatalf("failed to restore env var %s: %v", envVar, err)
+				}
 			}
 		}
 	}()
