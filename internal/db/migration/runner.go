@@ -19,7 +19,6 @@ type Migration struct {
 	Version string
 	Name    string
 	UpSQL   string
-	DownSQL string
 }
 
 // Runner handles database migrations
@@ -84,7 +83,6 @@ func (r *Runner) createMigrationsTable(ctx context.Context) error {
 	return err
 }
 
-// loadMigrations loads all migration files from the migrations directory
 func (r *Runner) loadMigrations() ([]Migration, error) {
 	var migrations []Migration
 
@@ -113,23 +111,11 @@ func (r *Runner) loadMigrations() ([]Migration, error) {
 			return fmt.Errorf("failed to read up migration file %s: %w", path, err)
 		}
 
-		// Read down migration (optional)
-		downPath := strings.Replace(path, ".up.sql", ".down.sql", 1)
-		var downSQL []byte
-		if _, err := os.Stat(downPath); err == nil {
-			downSQL, err = os.ReadFile(downPath)
-			if err != nil {
-				return fmt.Errorf("failed to read down migration file %s: %w", downPath, err)
-			}
-		}
-
 		migrations = append(migrations, Migration{
 			Version: version,
 			Name:    name,
 			UpSQL:   string(upSQL),
-			DownSQL: string(downSQL),
 		})
-
 		return nil
 	})
 
@@ -197,61 +183,6 @@ func (r *Runner) applyMigration(ctx context.Context, migration Migration) error 
 	return tx.Commit()
 }
 
-// Rollback rolls back the last applied migration
 func (r *Runner) Rollback(ctx context.Context) error {
-	// Get the last applied migration
-	var version, name, downSQL string
-	err := r.db.QueryRowContext(ctx,
-		"SELECT version, name FROM migrations ORDER BY applied_at DESC LIMIT 1",
-	).Scan(&version, &name)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return fmt.Errorf("no migrations to rollback")
-		}
-		return fmt.Errorf("failed to get last migration: %w", err)
-	}
-
-	// Load the down migration
-	migrations, err := r.loadMigrations()
-	if err != nil {
-		return fmt.Errorf("failed to load migrations: %w", err)
-	}
-
-	for _, migration := range migrations {
-		if migration.Version == version {
-			downSQL = migration.DownSQL
-			break
-		}
-	}
-
-	if downSQL == "" {
-		return fmt.Errorf("no down migration found for version %s", version)
-	}
-
-	fmt.Printf("Rolling back migration %s: %s\n", version, name)
-
-	tx, err := r.db.Begin()
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-
-	defer func() {
-		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-			log.Printf("tx rollback failed: %v", err)
-		}
-	}()
-
-	// Execute down migration
-	if _, err := tx.ExecContext(ctx, downSQL); err != nil {
-		return fmt.Errorf("failed to execute down migration: %w", err)
-	}
-
-	// Remove migration record - FIXED: Using ? placeholder instead of $1
-	_, err = tx.ExecContext(ctx, "DELETE FROM migrations WHERE version = ?", version)
-	if err != nil {
-		return fmt.Errorf("failed to remove migration record: %w", err)
-	}
-
-	return tx.Commit()
+	return fmt.Errorf("rollback is no longer supported")
 }
