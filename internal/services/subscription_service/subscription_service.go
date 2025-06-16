@@ -15,10 +15,10 @@ import (
 
 // SubscriptionService defines subscription service interface
 type subscriptionServiceProvider interface {
-	CreateSubscription(ctx context.Context, email, city, frequency string) error // возвращаем только error
+	CreateSubscription(ctx context.Context, email, city, frequency string) error
 	ConfirmSubscription(ctx context.Context, token string) error
 	DeleteSubscription(ctx context.Context, token string) error
-	GetConfirmedSubscriptions(ctx context.Context, frequency string) ([]models.Subscription, error)
+	GetConfirmedSubscriptions(ctx context.Context, frequency string) ([]contracts.Subscription, error)
 }
 
 type mailSender interface {
@@ -124,9 +124,9 @@ func (s SubscriptionService) GetConfirmedSubscriptions(ctx context.Context, freq
 	}
 
 	// Конвертація в contracts.Subscription
-	contractSubs := make([]contracts.Subscription, len(modelSubs))
+	converted := make([]contracts.Subscription, len(modelSubs))
 	for i, m := range modelSubs {
-		contractSubs[i] = contracts.Subscription{
+		converted[i] = contracts.Subscription{
 			ID:          m.ID,
 			Email:       m.Email,
 			City:        m.City,
@@ -138,5 +138,5 @@ func (s SubscriptionService) GetConfirmedSubscriptions(ctx context.Context, freq
 		}
 	}
 
-	return contractSubs, nil
+	return converted, nil
 }

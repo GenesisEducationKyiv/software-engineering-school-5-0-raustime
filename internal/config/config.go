@@ -18,7 +18,7 @@ type Config struct {
 	SMTPUser        string
 	SMTPPassword    string
 	Environment     string
-	BunDebugMode    string
+	BunDebugMode    string `env:"BUNDEBUG"`
 }
 
 // Load завантажує конфігурацію з змінних оточення
@@ -70,7 +70,12 @@ func (c *Config) GetDatabaseURL() string {
 
 // IsBunDebugEnabled перевіряє чи включений debug режим для Bun ORM
 func (c *Config) IsBunDebugEnabled() bool {
-	return strings.ToLower(c.BunDebugMode) == "1"
+	switch strings.ToLower(strings.TrimSpace(c.BunDebugMode)) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
 }
 
 // Validate перевіряє чи всі обов'язкові конфігурації встановлені

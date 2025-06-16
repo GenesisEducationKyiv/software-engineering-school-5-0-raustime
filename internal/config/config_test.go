@@ -16,13 +16,13 @@ func TestConfig_Load(t *testing.T) {
 			envVars: map[string]string{
 				"PORT":                "8080",
 				"ENVIRONMENT":         "development",
-				"DATABASE_URL":        "postgres://user:pass@localhost/db",
+				"DB_URL":              "postgres://user:pass@localhost/db",
 				"OPENWEATHER_API_KEY": "abc123",
 			},
 			expectErr: false,
 		},
 		{
-			name: "missing required DATABASE_URL",
+			name: "missing required DB_URL",
 			envVars: map[string]string{
 				"PORT":                "8080",
 				"ENVIRONMENT":         "development",
@@ -148,7 +148,6 @@ func TestConfig_IsBunDebugEnabled(t *testing.T) {
 		})
 	}
 }
-
 func TestConfig_DefaultValues(t *testing.T) {
 	clearEnvVars()
 	cfg, err := Load()
@@ -170,10 +169,10 @@ func TestConfig_EnvironmentVariableOverrides(t *testing.T) {
 
 	envs := map[string]string{
 		"PORT":                "9090",
-		"DATABASE_URL":        "postgres://test:test@localhost/testdb",
+		"DB_URL":              "postgres://test:test@localhost/testdb",
 		"ENVIRONMENT":         "production",
 		"OPENWEATHER_API_KEY": "abc",
-		"BUN_DEBUG":           "1",
+		"BUNDEBUG":            "1",
 	}
 
 	for k, v := range envs {
@@ -204,8 +203,8 @@ func TestConfig_EnvironmentVariableOverrides(t *testing.T) {
 
 func clearEnvVars() {
 	_ = os.Unsetenv("PORT")
-	_ = os.Unsetenv("DATABASE_URL")
+	_ = os.Unsetenv("DB_URL")
 	_ = os.Unsetenv("ENVIRONMENT")
-	_ = os.Unsetenv("BUN_DEBUG")
+	_ = os.Unsetenv("BUNDEBUG")
 	_ = os.Unsetenv("OPENWEATHER_API_KEY")
 }

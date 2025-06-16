@@ -1,186 +1,97 @@
 package mailer_service_test
 
 import (
-	"fmt"
-	"log"
+	"context"
 	"os"
+	"path/filepath"
 	"testing"
 	"weatherapi/internal/contracts"
-	"weatherapi/internal/openweatherapi"
+	"weatherapi/internal/services/mailer_service"
 
 	"github.com/stretchr/testify/assert"
 )
 
-const testTemplatesDir = "tests/templates"
-
-func TestMain(m *testing.M) {
-	// Setup: створюємо тестові шаблони перед запуском тестів
-	if err := setupTemplates(); err != nil {
-		fmt.Printf("Failed to setup test templates: %v\n", err)
-		os.Exit(1)
-	}
-
-	// Запускаємо тести
-	code := m.Run()
-
-	// Teardown: видаляємо тестові файли після завершення тестів
-	if err := cleanupTemplates(); err != nil {
-		fmt.Printf("Failed to cleanup test templates: %v\n", err)
-	}
-
-	os.Exit(code)
+type MockSender struct {
+	LastTo      string
+	LastSubject string
+	LastBody    string
 }
 
-func setupTemplates() error {
-	if err := os.MkdirAll(testTemplatesDir, 0755); err != nil {
-		return fmt.Errorf("failed to create templates directory: %w", err)
-	}
-
-	confirmationTemplate := `<!DOCTYPE html>
-<html>
-<head><title>Confirm Subscription</title></head>
-<body>
-	<h1>Confirm your subscription</h1>
-	<p>Click <a href="{{.ConfirmURL}}">here</a> to confirm</p>
-</body>
-</html>`
-
-	if err := os.WriteFile(testTemplatesDir+"/confirmation_email.html", []byte(confirmationTemplate), 0644); err != nil {
-		return fmt.Errorf("failed to write confirmation_email.html: %w", err)
-	}
-
-	weatherTemplate := `<!DOCTYPE html>
-<html>
-<head><title>Weather Update</title></head>
-<body>
-	<h1>Weather in {{.City}}</h1>
-	<p>Temperature: {{.Temperature}}°C</p>
-	<p>Description: {{.Description}}</p>
-	<p><a href="{{.UnsubscribeURL}}">Unsubscribe</a></p>
-</body>
-</html>`
-
-	if err := os.WriteFile(testTemplatesDir+"/weather_email.html", []byte(weatherTemplate), 0644); err != nil {
-		return fmt.Errorf("failed to write weather_email.html: %w", err)
-	}
-
+func (m *MockSender) Send(to, subject, body string) error {
+	m.LastTo = to
+	m.LastSubject = subject
+	m.LastBody = body
 	return nil
 }
 
-func cleanupTemplates() error {
-	return os.RemoveAll("tests")
+func setupTemplates(dir string) error {
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+	confirmation := `<!DOCTYPE html>
+<html><body><a href="{{.ConfirmURL}}">Confirm</a></body></html>`
+	weather := `<html><body><h1>{{.City}}</h1><p>{{.Temperature}}°C</p><p>{{.Description}}</p><a href="{{.UnsubscribeURL}}">Unsubscribe</a></body></html>`
+
+	if err := os.WriteFile(filepath.Join(dir, "confirmation_email.html"), []byte(confirmation), 0644); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(dir, "weather_email.html"), []byte(weather), 0644); err != nil {
+		return err
+	}
+	return nil
 }
 
 func TestSendConfirmationEmail(t *testing.T) {
-	mock := &mailer_service.MockSender{}
-
-	// Правильний виклик з appBaseURL
-	err := mailer_service.SendConfirmationEmailWithSender(
-		mock,
-		"https://example.com",
-		"test@example.com",
-		"token123",
-	)
-
+	tmpDir := t.TempDir()
+	err := setupTemplates(tmpDir)
 	assert.NoError(t, err)
-	assert.Equal(t, "test@example.com", mock.LastTo)
-	assert.Equal(t, "Confirm your subscription", mock.LastSubject)
-	assert.Contains(t, mock.LastBody, "https://example.com/api/confirm/token123")
+
+	mockSender := &MockSender{}
+	service := mailer_service.NewMailerService(mockSender, "https://test.com")
+	service.SetTemplateDir(tmpDir)
+
+	err = service.SendConfirmationEmail(context.Background(), "user@example.com", "abc123")
+	assert.NoError(t, err)
+	assert.Equal(t, "user@example.com", mockSender.LastTo)
+	assert.Equal(t, "Confirm your subscription", mockSender.LastSubject)
+	assert.Contains(t, mockSender.LastBody, "https://test.com/api/confirm/abc123")
 }
 
 func TestSendWeatherEmail(t *testing.T) {
-	mock := &mailer_service.MockSender{}
+	tmpDir := t.TempDir()
+	err := setupTemplates(tmpDir)
+	assert.NoError(t, err)
 
-	// Зберігаємо старий глобальний sender
-	oldEmail := mailer_service.Email
-	mailer_service.Email = mock
-	defer func() { mailer_service.Email = oldEmail }()
+	mockSender := &MockSender{}
+	service := mailer_service.NewMailerService(mockSender, "https://test.com")
+	service.SetTemplateDir(tmpDir)
 
-	data := &openweatherapi.WeatherData{
+	data := contracts.WeatherData{
 		Description: "Cloudy",
-		Temperature: 13.7,
-		Humidity:    70,
+		Temperature: 21.5,
+		Humidity:    80,
 	}
 
-	weatherData := &contracts.WeatherData{
-		Temperature: data.Temperature,
-		Humidity:    data.Humidity,
-		Description: data.Description,
-	}
-
-	err := mailer_service.SendWeatherEmailWithSender(mock, "user@example.com", "Berlin", weatherData, "https://example.com", "tok789")
-
+	err = service.SendWeatherEmail(context.Background(), "user@example.com", "Kyiv", data, "xyz789")
 	assert.NoError(t, err)
-	assert.Equal(t, "user@example.com", mock.LastTo)
-	assert.Contains(t, mock.LastSubject, "Berlin")
-	assert.Contains(t, mock.LastBody, "Cloudy")
-	assert.Contains(t, mock.LastBody, "13.7")
-	assert.Contains(t, mock.LastBody, "https://example.com/api/unsubscribe/tok789")
+	assert.Equal(t, "user@example.com", mockSender.LastTo)
+	assert.Contains(t, mockSender.LastSubject, "Kyiv")
+	assert.Contains(t, mockSender.LastBody, "Cloudy")
+	assert.Contains(t, mockSender.LastBody, "21.5")
+	assert.Contains(t, mockSender.LastBody, "https://test.com/api/unsubscribe/xyz789")
 }
 
-// Альтернативний підхід з t.TempDir() для ізольованих тестів
-func TestSendWeatherEmail_WithTempDir(t *testing.T) {
-	// Створюємо тимчасову директорію для цього тесту
-	tempDir := t.TempDir()
-	templatesDir := tempDir + "/templates"
-
-	err := os.MkdirAll(templatesDir, 0755)
+func TestInvalidTemplateHandling(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.MkdirAll(tmpDir, 0755)
+	err := os.WriteFile(filepath.Join(tmpDir, "confirmation_email.html"), []byte("{{.MissingField}}"), 0644)
 	assert.NoError(t, err)
 
-	// Створюємо шаблон тільки для цього тесту
-	weatherTemplate := `<h1>{{.City}} Weather</h1><p>{{.Temperature}}°C - {{.Description}}</p>`
-	err = os.WriteFile(templatesDir+"/weather_email.html", []byte(weatherTemplate), 0644)
-	assert.NoError(t, err)
+	mockSender := &MockSender{}
+	service := mailer_service.NewMailerService(mockSender, "https://test.com")
+	service.SetTemplateDir(tmpDir)
 
-	mock := mailer_service.MockSender{}
-
-	data := &openweatherapi.WeatherData{
-		Description: "Rainy",
-		Temperature: 15.2,
-		Humidity:    85,
-	}
-
-	weatherData := &contracts.WeatherData{
-		Description: data.Description,
-		Temperature: data.Temperature,
-		Humidity:    data.Humidity,
-	}
-
-	err = mailer_service.SendWeatherEmailWithSender(mock, "isolated@test.com", "London", weatherData, "https://test.com", "token123")
-	assert.NoError(t, err)
-
-	// Файли автоматично видаляться після завершення тесту
-}
-
-// Додатковий тест для перевірки помилок шаблонів
-func TestSendWeatherEmail_InvalidTemplate(t *testing.T) {
-	mock := *mailer_service.MockSender{}
-
-	// Тимчасово пошкоджуємо шаблон
-	invalidTemplate := `{{.InvalidField}}`
-	tempFile := testTemplatesDir + "/weather_email_temp.html"
-
-	err := os.WriteFile(tempFile, []byte(invalidTemplate), 0644)
-	assert.NoError(t, err)
-	defer func() {
-		if err := os.Remove(tempFile); err != nil {
-			log.Printf("Failed to remove temp file %s: %v", tempFile, err)
-		}
-	}()
-
-	// Тест повинен пройти, оскільки ми використовуємо правильний шаблон
-	data := &openweatherapi.WeatherData{
-		Description: "Sunny",
-		Temperature: 25.0,
-		Humidity:    60,
-	}
-
-	weatherData := &contracts.WeatherData{
-		Description: data.Description,
-		Temperature: data.Temperature,
-		Humidity:    data.Humidity,
-	}
-
-	err = mailer_service.SendWeatherEmailWithSender(mock, "test@example.com", "Kyiv", weatherData, "https://example.com", "token")
-	assert.NoError(t, err)
+	err = service.SendConfirmationEmail(context.Background(), "user@example.com", "badtoken")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to execute template")
 }
