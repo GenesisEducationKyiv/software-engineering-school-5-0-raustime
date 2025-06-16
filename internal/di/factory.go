@@ -10,7 +10,6 @@ import (
 	"weatherapi/internal/config"
 	"weatherapi/internal/db/migration"
 	"weatherapi/internal/jobs"
-	"weatherapi/internal/mailer"
 
 	"weatherapi/internal/adapters"
 	"weatherapi/internal/server"
@@ -28,10 +27,10 @@ import (
 type Container struct {
 	Config              *config.Config
 	DB                  *bun.DB
-	WeatherService      weather_service.IWeatherService
-	MailerService       mailer_service.IMailerService
-	SubscriptionService subscription_service.ISubscriptionService
-	JobScheduler        jobs.IJobScheduler
+	WeatherService      weather_service.WeatherService
+	MailerService       mailer_service.MailerService
+	SubscriptionService subscription_service.SubscriptionService
+	JobScheduler        jobs.Scheduler
 	Router              http.Handler
 }
 
@@ -61,12 +60,12 @@ func BuildContainer() (*Container, error) {
 	}
 
 	// Init Weather API adapter
-	api := &adapters.OpenWeatherAdapter{}
+	api := adapters.OpenWeatherAdapter{}
 	weatherService := weather_service.NewWeatherService(api)
 
 	// Init Mailer
 
-	emailSender := mailer.NewSMTPSender(
+	emailSender := mailer_service.NewSMTPSender(
 		cfg.SMTPUser,
 		cfg.SMTPPassword,
 		cfg.SMTPHost,
@@ -74,13 +73,8 @@ func BuildContainer() (*Container, error) {
 	)
 	mailerService := mailer_service.NewMailerService(emailSender, cfg.AppBaseURL)
 
-	// Init SubscriptionService
-	subscriptionService := subscription_service.NewSubscriptionService(db)
-
-	// Init JobScheduler
+	subscriptionService := subscription_service.NewSubscriptionService(db, mailerService)
 	jobScheduler := jobs.NewScheduler(subscriptionService, mailerService, weatherService)
-
-	// Init HTTP router
 	router := server.NewRouter(weatherService, subscriptionService, mailerService)
 
 	return &Container{

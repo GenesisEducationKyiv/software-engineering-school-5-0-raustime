@@ -1,4 +1,4 @@
-package mailer
+package mailer_service
 
 import (
 	"fmt"

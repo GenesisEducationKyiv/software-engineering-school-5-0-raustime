@@ -2,14 +2,12 @@ package openweatherapi
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"weatherapi/internal/apierrors"
 )
-
-var ErrCityNotFound = errors.New("city not found")
 
 type WeatherResponse struct {
 	Weather []struct {
@@ -53,7 +51,7 @@ func FetchWeather(city string) (*WeatherData, error) {
 		}
 		_ = json.NewDecoder(resp.Body).Decode(&errResp)
 		if errResp.Message == "city not found" {
-			return nil, ErrCityNotFound
+			return nil, apierrors.ErrCityNotFound
 		}
 		return nil, fmt.Errorf("weather API 404: %s", errResp.Message)
 	}

@@ -11,29 +11,45 @@ import (
 	"weatherapi/internal/services/weather_service"
 )
 
-// IJobScheduler визначає інтерфейс для планувальника задач
-type IJobScheduler interface {
+// Interfaces for dependency injection and testing
+
+// subscriptionService defines required methods from SubscriptionService
+type subscriptionService interface {
+	GetConfirmedSubscriptions(ctx context.Context, frequency string) ([]contracts.Subscription, error)
+}
+
+// mailerService defines required methods from MailerService
+type mailerService interface {
+	SendWeatherEmail(ctx context.Context, to, city string, data contracts.WeatherData, token string) error
+}
+
+// weatherService defines required methods from WeatherService
+type weatherService interface {
+	GetWeather(ctx context.Context, city string) (contracts.WeatherData, error)
+}
+
+// schedulerProvider визначає інтерфейс для планувальника задач
+type jobSchedulerProvider interface {
 	Start()
 	Stop()
 	weatherNotificationLoop()
 	sendWeatherUpdates(frequency string)
 }
 
-// Scheduler manages background jobs
 type Scheduler struct {
-	subscriptionService subscription_service.ISubscriptionService
-	mailerService       mailer_service.IMailerService
-	weatherService      weather_service.IWeatherService
+	subscriptionService subscriptionService
+	mailerService       mailerService
+	weatherService      weatherService
 	stopChan            chan struct{}
 }
 
 // NewScheduler creates a new job scheduler
 func NewScheduler(
-	subscriptionService subscription_service.ISubscriptionService,
-	mailerService mailer_service.IMailerService,
-	weatherService weather_service.IWeatherService,
-) *Scheduler {
-	return &Scheduler{
+	subscriptionService subscription_service.SubscriptionService,
+	mailerService mailer_service.MailerService,
+	weatherService weather_service.WeatherService,
+) Scheduler {
+	return Scheduler{
 		subscriptionService: subscriptionService,
 		mailerService:       mailerService,
 		weatherService:      weatherService,
@@ -42,17 +58,17 @@ func NewScheduler(
 }
 
 // Start starts the job scheduler
-func (s *Scheduler) Start() {
+func (s Scheduler) Start() {
 	go s.weatherNotificationLoop()
 }
 
 // Stop stops the job scheduler
-func (s *Scheduler) Stop() {
+func (s Scheduler) Stop() {
 	close(s.stopChan)
 }
 
 // weatherNotificationLoop runs the weather notification loop
-func (s *Scheduler) weatherNotificationLoop() {
+func (s Scheduler) weatherNotificationLoop() {
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
 
@@ -78,7 +94,7 @@ func (s *Scheduler) weatherNotificationLoop() {
 }
 
 // sendWeatherUpdates sends weather updates for specified frequency
-func (s *Scheduler) sendWeatherUpdates(frequency string) {
+func (s Scheduler) sendWeatherUpdates(frequency string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -89,12 +105,12 @@ func (s *Scheduler) sendWeatherUpdates(frequency string) {
 	}
 
 	for _, subscription := range subscriptions {
-		weather, err := s.weatherService.GetCurrentWeather(subscription.City)
+		weather, err := s.weatherService.GetWeather(ctx, subscription.City)
 		if err != nil {
 			log.Printf("Weather fetch error for %s: %v", subscription.City, err)
 			continue
 		}
-		weatherData := &contracts.WeatherData{
+		weatherData := contracts.WeatherData{
 			Temperature: weather.Temperature,
 			Humidity:    weather.Humidity,
 			Description: weather.Description,

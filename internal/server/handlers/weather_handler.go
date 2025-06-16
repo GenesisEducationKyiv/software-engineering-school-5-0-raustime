@@ -4,30 +4,24 @@ import (
 	"encoding/json"
 	"net/http"
 	"weatherapi/internal/apierrors"
+	"weatherapi/internal/contracts"
 	"weatherapi/internal/services/weather_service"
 )
 
 // WeatherHandler handles weather-related requests
 type WeatherHandler struct {
-	weatherService weather_service.IWeatherService
+	weatherService weather_service.WeatherService
 }
 
 // NewWeatherHandler creates a new weather handler
-func NewWeatherHandler(weatherService weather_service.IWeatherService) *WeatherHandler {
-	return &WeatherHandler{
+func NewWeatherHandler(weatherService weather_service.WeatherService) WeatherHandler {
+	return WeatherHandler{
 		weatherService: weatherService,
 	}
 }
 
-// WeatherResponse represents weather API response
-type WeatherResponse struct {
-	Temperature float64 `json:"temperature"`
-	Humidity    float64 `json:"humidity"`
-	Description string  `json:"description"`
-}
-
 // GetWeather handles weather requests
-func (h *WeatherHandler) GetWeather(w http.ResponseWriter, r *http.Request) {
+func (h WeatherHandler) GetWeather(w http.ResponseWriter, r *http.Request) { // value receiver
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -39,7 +33,7 @@ func (h *WeatherHandler) GetWeather(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	weather, err := h.weatherService.GetCurrentWeather(city)
+	weather, err := h.weatherService.GetWeather(r.Context(), city)
 	if err != nil {
 		switch err {
 		case apierrors.ErrCityNotFound:
@@ -50,7 +44,7 @@ func (h *WeatherHandler) GetWeather(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := WeatherResponse{
+	response := contracts.WeatherData{
 		Temperature: weather.Temperature,
 		Humidity:    weather.Humidity,
 		Description: weather.Description,

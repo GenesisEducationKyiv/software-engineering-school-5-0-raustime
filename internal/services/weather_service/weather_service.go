@@ -8,45 +8,43 @@ import (
 	"weatherapi/internal/contracts"
 )
 
-type IWeatherService interface {
-	GetCurrentWeather(city string) (*contracts.WeatherData, error)
+// WeatherServiceProvider defines the interface for weather service
+type WeatherServiceProvider interface {
+	GetWeather(ctx context.Context, city string) (contracts.WeatherData, error)
 }
 
-// weatherService implements IWeatherService
-type weatherService struct {
-	weatherAPI IWeatherAPI
+// WeatherAPIProvider defines weather API interface with context support
+type WeatherAPIProvider interface {
+	FetchWeather(ctx context.Context, city string) (contracts.WeatherData, error)
 }
 
-// WeatherAPI defines weather API interface
-type IWeatherAPI interface {
-	FetchWeather(city string) (*contracts.WeatherData, error)
+// WeatherService implements WeatherServiceProvider
+type WeatherService struct {
+	weatherAPI WeatherAPIProvider
 }
 
-// NewWeatherService створює новий weatherService з переданим API
-func NewWeatherService(api IWeatherAPI) IWeatherService {
-	return &weatherService{
+// NewWeatherService creates a new weatherService with the provided API
+func NewWeatherService(api WeatherAPIProvider) WeatherService {
+	return WeatherService{
 		weatherAPI: api,
 	}
 }
 
 // GetWeather retrieves weather data for a city
-func (s *weatherService) GetWeather(ctx context.Context, city string) (*contracts.WeatherData, error) {
-	data, err := s.weatherAPI.FetchWeather(city)
-	if err != nil {
-		if errors.Is(err, apierrors.ErrCityNotFound) {
-			return nil, apierrors.ErrCityNotFound
-		}
-		return nil, err
+func (s WeatherService) GetWeather(ctx context.Context, city string) (contracts.WeatherData, error) {
+	// Validate input
+	if city == "" {
+		return contracts.WeatherData{}, apierrors.ErrInvalidCity
 	}
 
-	return &contracts.WeatherData{
-		Temperature: data.Temperature,
-		Humidity:    data.Humidity,
-		Description: data.Description,
-	}, nil
-}
+	// Pass context to API call for proper cancellation/timeout handling
+	data, err := s.weatherAPI.FetchWeather(ctx, city)
+	if err != nil {
+		if errors.Is(err, apierrors.ErrCityNotFound) {
+			return contracts.WeatherData{}, apierrors.ErrCityNotFound
+		}
+		return contracts.WeatherData{}, err
+	}
 
-// GetCurrentWeather retrieves weather data for a city (implements IWeatherService)
-func (s *weatherService) GetCurrentWeather(city string) (*contracts.WeatherData, error) {
-	return s.GetWeather(context.Background(), city)
+	return data, nil
 }

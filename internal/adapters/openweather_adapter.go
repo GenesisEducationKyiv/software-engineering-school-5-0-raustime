@@ -1,6 +1,7 @@
 package adapters
 
 import (
+	"context"
 	"errors"
 	"weatherapi/internal/apierrors"
 	"weatherapi/internal/contracts"
@@ -9,15 +10,15 @@ import (
 
 type OpenWeatherAdapter struct{}
 
-func (a *OpenWeatherAdapter) FetchWeather(city string) (*contracts.WeatherData, error) {
+func (a OpenWeatherAdapter) FetchWeather(ctx context.Context, city string) (contracts.WeatherData, error) {
 	data, err := openweatherapi.FetchWeather(city)
 	if err != nil {
-		if errors.Is(err, openweatherapi.ErrCityNotFound) {
-			return nil, apierrors.ErrCityNotFound
+		if errors.Is(err, apierrors.ErrCityNotFound) {
+			return contracts.WeatherData{}, apierrors.ErrCityNotFound
 		}
-		return nil, err
+		return contracts.WeatherData{}, err
 	}
-	return &contracts.WeatherData{
+	return contracts.WeatherData{
 		Temperature: data.Temperature,
 		Humidity:    data.Humidity,
 		Description: data.Description,

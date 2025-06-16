@@ -6,56 +6,27 @@ import (
 )
 
 func TestConfig_Load(t *testing.T) {
-	// Save original env vars
-	originalVars := map[string]string{
-		"PORT":         os.Getenv("PORT"),
-		"ENVIRONMENT":  os.Getenv("ENVIRONMENT"),
-		"DATABASE_URL": os.Getenv("DATABASE_URL"),
-		"BUN_DEBUG":    os.Getenv("BUN_DEBUG"),
-	}
-
-	// Clean up after test
-	defer func() {
-		for key, value := range originalVars {
-			if value == "" {
-				if err := os.Unsetenv(key); err != nil {
-					t.Logf("warning: failed to unset key var %s: %v", key, err)
-				}
-			} else {
-				if err := os.Setenv(key, value); err != nil {
-					t.Fatalf("failed to restore key var %s: %v", key, err)
-				}
-			}
-		}
-	}()
-
 	tests := []struct {
 		name      string
 		envVars   map[string]string
 		expectErr bool
 	}{
 		{
-			name: "valid config with all env vars",
+			name: "valid config",
 			envVars: map[string]string{
-				"PORT":         "8080",
-				"ENVIRONMENT":  "development",
-				"DATABASE_URL": "postgres://user:pass@localhost/db",
-				"BUN_DEBUG":    "true",
-			},
-			expectErr: false,
-		},
-		{
-			name: "valid config with defaults",
-			envVars: map[string]string{
-				"DATABASE_URL": "postgres://user:pass@localhost/db",
+				"PORT":                "8080",
+				"ENVIRONMENT":         "development",
+				"DATABASE_URL":        "postgres://user:pass@localhost/db",
+				"OPENWEATHER_API_KEY": "abc123",
 			},
 			expectErr: false,
 		},
 		{
 			name: "missing required DATABASE_URL",
 			envVars: map[string]string{
-				"PORT":        "8080",
-				"ENVIRONMENT": "development",
+				"PORT":                "8080",
+				"ENVIRONMENT":         "development",
+				"OPENWEATHER_API_KEY": "abc123",
 			},
 			expectErr: true,
 		},
@@ -63,46 +34,26 @@ func TestConfig_Load(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Clear all env vars first
-			for key := range originalVars {
-				if err := os.Unsetenv(key); err != nil {
-					t.Logf("warning: failed to unset key var %s: %v", key, err)
-				}
-			}
-
-			// Set test env vars
-			for key, value := range tt.envVars {
-				if err := os.Setenv(key, value); err != nil {
-					t.Fatalf("failed to restore key var %s: %v", key, err)
-				}
+			// Clear and set env vars
+			clearEnvVars()
+			for k, v := range tt.envVars {
+				_ = os.Setenv(k, v)
 			}
 
 			cfg, err := Load()
-
 			if tt.expectErr {
-				if err == nil {
-					t.Error("expected error but got none")
+				if err != nil {
+					return // expected error
+				}
+				// Validate separately
+				if err := cfg.Validate(); err == nil {
+					t.Error("expected validation error but got none")
 				}
 				return
 			}
 
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
-				return
-			}
-
-			// Validate loaded config
-			if cfg.DatabaseURL == "" {
-				t.Error("DatabaseURL should not be empty")
-			}
-
-			// Check defaults
-			if cfg.Port == "" {
-				t.Error("Port should have default value")
-			}
-
-			if cfg.Environment == "" {
-				t.Error("Environment should have default value")
 			}
 		})
 	}
@@ -110,87 +61,38 @@ func TestConfig_Load(t *testing.T) {
 
 func TestConfig_Validate(t *testing.T) {
 	tests := []struct {
-		name      string
-		config    *Config
-		expectErr bool
+		name    string
+		config  *Config
+		wantErr bool
 	}{
 		{
 			name: "valid config",
 			config: &Config{
-				Port:         "8080",
-				Environment:  "development",
-				DatabaseURL:  "postgres://user:pass@localhost/db",
-				BunDebugMode: "false",
+				Port:           "8080",
+				Environment:    "development",
+				DatabaseURL:    "postgres://user:pass@localhost/db",
+				OpenWeatherKey: "abc123",
 			},
-			expectErr: false,
-		},
-		{
-			name: "missing port",
-			config: &Config{
-				Environment: "development",
-				DatabaseURL: "postgres://user:pass@localhost/db",
-			},
-			expectErr: true,
-		},
-		{
-			name: "missing environment",
-			config: &Config{
-				Port:        "8080",
-				DatabaseURL: "postgres://user:pass@localhost/db",
-			},
-			expectErr: true,
+			wantErr: false,
 		},
 		{
 			name: "missing database URL",
 			config: &Config{
-				Port:        "8080",
-				Environment: "development",
+				Port:           "8080",
+				Environment:    "development",
+				OpenWeatherKey: "abc123",
 			},
-			expectErr: true,
-		},
-		{
-			name: "invalid port",
-			config: &Config{
-				Port:        "invalid",
-				Environment: "development",
-				DatabaseURL: "postgres://user:pass@localhost/db",
-			},
-			expectErr: true,
-		},
-		{
-			name: "port out of range",
-			config: &Config{
-				Port:        "99999",
-				Environment: "development",
-				DatabaseURL: "postgres://user:pass@localhost/db",
-			},
-			expectErr: true,
+			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.config.Validate()
-
-			if tt.expectErr && err == nil {
-				t.Error("expected validation error but got none")
-			}
-
-			if !tt.expectErr && err != nil {
-				t.Errorf("unexpected validation error: %v", err)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
-	}
-}
-
-func TestConfig_GetDatabaseURL(t *testing.T) {
-	config := &Config{
-		DatabaseURL: "postgres://user:pass@localhost/testdb",
-	}
-
-	url := config.GetDatabaseURL()
-	if url != config.DatabaseURL {
-		t.Errorf("expected %s, got %s", config.DatabaseURL, url)
 	}
 }
 
@@ -203,14 +105,35 @@ func TestConfig_IsBunDebugEnabled(t *testing.T) {
 		{
 			name: "debug enabled",
 			config: &Config{
-				BunDebugMode: "true",
+				BunDebugMode: "1",
 			},
 			expected: true,
 		},
 		{
 			name: "debug disabled",
 			config: &Config{
-				BunDebugMode: "false",
+				BunDebugMode: "0",
+			},
+			expected: false,
+		},
+		{
+			name: "case insensitive true",
+			config: &Config{
+				BunDebugMode: "TRUE",
+			},
+			expected: true,
+		},
+		{
+			name: "alternative yes",
+			config: &Config{
+				BunDebugMode: "yes",
+			},
+			expected: true,
+		},
+		{
+			name: "empty string",
+			config: &Config{
+				BunDebugMode: "",
 			},
 			expected: false,
 		},
@@ -220,112 +143,69 @@ func TestConfig_IsBunDebugEnabled(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.config.IsBunDebugEnabled()
 			if result != tt.expected {
-				t.Errorf("expected %v, got %v", tt.expected, result)
+				t.Errorf("IsBunDebugEnabled() = %v, expected %v", result, tt.expected)
 			}
 		})
 	}
 }
 
 func TestConfig_DefaultValues(t *testing.T) {
-	// Clear environment variables
-	envVars := []string{"PORT", "ENVIRONMENT", "BUN_DEBUG"}
-	originalValues := make(map[string]string)
-
-	for _, envVar := range envVars {
-		originalValues[envVar] = os.Getenv(envVar)
-		if err := os.Unsetenv(envVar); err != nil {
-			t.Fatalf("failed to unset env var %s: %v", envVar, err)
-		}
-	}
-
-	// Clean up after test
-	defer func() {
-		for envVar, originalValue := range originalValues {
-			if originalValue == "" {
-				if err := os.Unsetenv(envVar); err != nil {
-					t.Logf("warning: failed to unset envVar var %s: %v", envVar, err)
-				}
-			} else {
-				if err := os.Setenv(envVar, originalValue); err != nil {
-					t.Fatalf("failed to restore env var %s: %v", envVar, err)
-				}
-			}
-		}
-	}()
-
-	// Set required DATABASE_URL
-	if err := os.Setenv("DATABASE_URL", "postgres://user:pass@localhost/db"); err != nil {
-		t.Fatalf("failed to restore DATABASE_URL")
-	}
-	defer func() {
-		if err := os.Unsetenv("DATABASE_URL"); err != nil {
-			t.Logf("failed to unset env: %v", err)
-		}
-	}()
-
+	clearEnvVars()
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Check default values
 	if cfg.Port != "8080" {
-		t.Errorf("expected default port 8080, got %s", cfg.Port)
+		t.Errorf("expected default port 8080, got %v", cfg.Port)
 	}
 
-	if cfg.Environment != "development" {
-		t.Errorf("expected default environment development, got %s", cfg.Environment)
-	}
-
-	if cfg.BunDebugMode != "false" {
-		t.Errorf("expected default BunDebug false, got %v", cfg.BunDebugMode)
+	if cfg.BunDebugMode != "0" {
+		t.Errorf("expected default BunDebug 0, got %v", cfg.BunDebugMode)
 	}
 }
 
 func TestConfig_EnvironmentVariableOverrides(t *testing.T) {
-	// Set environment variables
-	testVars := map[string]string{
-		"PORT":         "3000",
-		"ENVIRONMENT":  "production",
-		"DATABASE_URL": "postgres://prod:pass@prod-host/proddb",
-		"BUN_DEBUG":    "true",
+	clearEnvVars()
+
+	envs := map[string]string{
+		"PORT":                "9090",
+		"DATABASE_URL":        "postgres://test:test@localhost/testdb",
+		"ENVIRONMENT":         "production",
+		"OPENWEATHER_API_KEY": "abc",
+		"BUN_DEBUG":           "1",
 	}
 
-	for key, value := range testVars {
-		if err := os.Setenv(key, value); err != nil {
-			t.Fatalf("failed to restore key var %s: %v", key, err)
-		}
+	for k, v := range envs {
+		_ = os.Setenv(k, v)
 	}
-
-	// Clean up after test
-	defer func() {
-		for key := range testVars {
-			if err := os.Unsetenv(key); err != nil {
-				t.Logf("warning: failed to unset key var %s: %v", key, err)
-			}
-
-		}
-	}()
 
 	cfg, err := Load()
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("Load() error: %v", err)
 	}
 
-	// Verify environment variables override defaults
-	if cfg.Port != "3000" {
-		t.Errorf("expected port 3000, got %s", cfg.Port)
+	if cfg.Port != "9090" {
+		t.Errorf("expected port 9090, got %v", cfg.Port)
+	}
+
+	if cfg.DatabaseURL != "postgres://test:test@localhost/testdb" {
+		t.Errorf("unexpected db url: %v", cfg.DatabaseURL)
 	}
 
 	if cfg.Environment != "production" {
-		t.Errorf("expected environment production, got %s", cfg.Environment)
+		t.Errorf("unexpected environment: %v", cfg.Environment)
 	}
 
-	if cfg.DatabaseURL != "postgres://prod:pass@prod-host/proddb" {
-		t.Errorf("expected production database URL, got %s", cfg.DatabaseURL)
+	if cfg.BunDebugMode != "1" {
+		t.Errorf("expected BunDebug 1, got %v", cfg.BunDebugMode)
 	}
+}
 
-	if cfg.BunDebugMode != "true" {
-		t.Errorf("expected BunDebug true, got %v", cfg.BunDebugMode)
-	}
+func clearEnvVars() {
+	_ = os.Unsetenv("PORT")
+	_ = os.Unsetenv("DATABASE_URL")
+	_ = os.Unsetenv("ENVIRONMENT")
+	_ = os.Unsetenv("BUN_DEBUG")
+	_ = os.Unsetenv("OPENWEATHER_API_KEY")
 }

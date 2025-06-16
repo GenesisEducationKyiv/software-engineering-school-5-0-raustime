@@ -24,10 +24,10 @@ type App struct {
 	config              *config.Config
 	db                  *bun.DB
 	httpServer          *http.Server
-	weatherService      weather_service.IWeatherService
-	subscriptionService subscription_service.ISubscriptionService
-	mailerService       mailer_service.IMailerService
-	jobScheduler        jobs.IJobScheduler
+	weatherService      weather_service.WeatherService
+	subscriptionService subscription_service.SubscriptionService
+	mailerService       mailer_service.MailerService
+	jobScheduler        jobs.Scheduler
 }
 
 // New створює новий екземпляр додатку
@@ -61,9 +61,9 @@ func (a *App) Run() error {
 	a.jobScheduler.Start()
 
 	go func() {
-		log.Printf("Starting server on %s (environment: %s)", a.httpServer.Addr, a.config.Environment)
+		log.Printf("Starting server on %s (env: %s)", a.httpServer.Addr, a.config.Environment)
 		if err := a.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server failed: %v", err)
+			log.Printf("Server stopped with error: %v", err) // краще, ніж log.Fatal
 		}
 	}()
 
@@ -93,9 +93,7 @@ func (a *App) waitForShutdown() error {
 func (a *App) Close(ctx context.Context) error {
 	var err error
 
-	if a.jobScheduler != nil {
-		a.jobScheduler.Stop()
-	}
+	a.jobScheduler.Stop()
 
 	if a.httpServer != nil {
 		if shutdownErr := a.httpServer.Shutdown(ctx); shutdownErr != nil {

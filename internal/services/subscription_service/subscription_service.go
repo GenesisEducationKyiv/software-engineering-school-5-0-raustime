@@ -2,89 +2,95 @@ package subscription_service
 
 import (
 	"context"
-	"errors"
 	"time"
 
+	"weatherapi/internal/apierrors"
+	"weatherapi/internal/contracts"
 	"weatherapi/internal/db/models"
+	"weatherapi/internal/services/mailer_service"
 
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
 
-var (
-	ErrAlreadySubscribed    = errors.New("email already subscribed")
-	ErrSubscriptionNotFound = errors.New("subscription not found")
-	ErrInvalidToken         = errors.New("invalid token")
-)
-
 // SubscriptionService defines subscription service interface
-type ISubscriptionService interface {
-	CreateSubscription(ctx context.Context, email, city, frequency string) (*models.Subscription, error)
+type subscriptionServiceProvider interface {
+	CreateSubscription(ctx context.Context, email, city, frequency string) error // возвращаем только error
 	ConfirmSubscription(ctx context.Context, token string) error
 	DeleteSubscription(ctx context.Context, token string) error
 	GetConfirmedSubscriptions(ctx context.Context, frequency string) ([]models.Subscription, error)
 }
 
+type mailSender interface {
+	SendConfirmationEmail(ctx context.Context, to string, token string) error
+}
+
 // subscriptionService implements SubscriptionService
-type subscriptionService struct {
-	db bun.IDB
+type SubscriptionService struct {
+	db           bun.IDB
+	mailerSender mailer_service.MailerService
 }
 
 // NewSubscriptionService creates a new subscription service
-func NewSubscriptionService(db bun.IDB) ISubscriptionService {
-	return &subscriptionService{db: db}
+func NewSubscriptionService(db bun.IDB, mailer mailer_service.MailerService) SubscriptionService {
+	return SubscriptionService{
+		db:           db,
+		mailerSender: mailer,
+	}
 }
 
 // CreateSubscription creates a new subscription
-func (s *subscriptionService) CreateSubscription(ctx context.Context, email, city, frequency string) (*models.Subscription, error) {
-	// Check if already subscribed
-	var existing models.Subscription
-	err := s.db.NewSelect().Model(&existing).Where("email = ?", email).Scan(ctx)
-	if err == nil {
-		return nil, ErrAlreadySubscribed
-	}
+func (s SubscriptionService) CreateSubscription(ctx context.Context, email, city, frequency string) error {
+	return s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		var existing models.Subscription
+		err := tx.NewSelect().Model(&existing).Where("email = ?", email).Scan(ctx)
+		if err == nil {
+			return apierrors.ErrAlreadySubscribed
+		}
 
-	subscription := &models.Subscription{
-		Email:     email,
-		City:      city,
-		Frequency: frequency,
-		Token:     uuid.New().String(),
-		CreatedAt: time.Now(),
-	}
+		subscription := models.Subscription{
+			Email:     email,
+			City:      city,
+			Frequency: frequency,
+			Token:     uuid.New().String(),
+			CreatedAt: time.Now(),
+		}
 
-	if _, err := s.db.NewInsert().Model(subscription).Exec(ctx); err != nil {
-		return nil, err
-	}
+		if _, err := tx.NewInsert().Model(&subscription).Exec(ctx); err != nil {
+			return err
+		}
 
-	return subscription, nil
+		if err := s.mailerSender.SendConfirmationEmail(ctx, email, subscription.Token); err != nil {
+			return apierrors.ErrFailedSendConfirmEmail
+		}
+
+		return nil
+	})
 }
 
 // ConfirmSubscription confirms a subscription
-func (s *subscriptionService) ConfirmSubscription(ctx context.Context, token string) error {
+func (s SubscriptionService) ConfirmSubscription(ctx context.Context, token string) error {
 	if _, err := uuid.Parse(token); err != nil {
-		return ErrInvalidToken
+		return apierrors.ErrInvalidToken
 	}
 
 	var subscription models.Subscription
 	err := s.db.NewSelect().Model(&subscription).Where("token = ?", token).Scan(ctx)
 	if err != nil {
-		return ErrSubscriptionNotFound
+		return apierrors.ErrSubscriptionNotFound
 	}
 
 	subscription.Confirmed = true
 	subscription.ConfirmedAt = time.Now()
 
-	if _, err := s.db.NewUpdate().Model(&subscription).WherePK().Exec(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	_, err = s.db.NewUpdate().Model(&subscription).WherePK().Exec(ctx)
+	return err
 }
 
 // DeleteSubscription deletes a subscription
-func (s *subscriptionService) DeleteSubscription(ctx context.Context, token string) error {
+func (s SubscriptionService) DeleteSubscription(ctx context.Context, token string) error {
 	if _, err := uuid.Parse(token); err != nil {
-		return ErrInvalidToken
+		return apierrors.ErrInvalidToken
 	}
 
 	res, err := s.db.NewDelete().Model((*models.Subscription)(nil)).Where("token = ?", token).Exec(ctx)
@@ -98,20 +104,39 @@ func (s *subscriptionService) DeleteSubscription(ctx context.Context, token stri
 	}
 
 	if count == 0 {
-		return ErrSubscriptionNotFound
+		return apierrors.ErrSubscriptionNotFound
 	}
 
 	return nil
 }
 
 // GetConfirmedSubscriptions retrieves confirmed subscriptions by frequency
-func (s *subscriptionService) GetConfirmedSubscriptions(ctx context.Context, frequency string) ([]models.Subscription, error) {
-	var subscriptions []models.Subscription
+func (s SubscriptionService) GetConfirmedSubscriptions(ctx context.Context, frequency string) ([]contracts.Subscription, error) {
+	var modelSubs []models.Subscription
 	err := s.db.NewSelect().
-		Model(&subscriptions).
+		Model(&modelSubs).
 		Where("confirmed = TRUE").
 		Where("frequency = ?", frequency).
 		Scan(ctx)
 
-	return subscriptions, err
+	if err != nil {
+		return nil, err
+	}
+
+	// Конвертація в contracts.Subscription
+	contractSubs := make([]contracts.Subscription, len(modelSubs))
+	for i, m := range modelSubs {
+		contractSubs[i] = contracts.Subscription{
+			ID:          m.ID,
+			Email:       m.Email,
+			City:        m.City,
+			Frequency:   m.Frequency,
+			Confirmed:   m.Confirmed,
+			Token:       m.Token,
+			CreatedAt:   m.CreatedAt,
+			ConfirmedAt: m.ConfirmedAt,
+		}
+	}
+
+	return contractSubs, nil
 }
