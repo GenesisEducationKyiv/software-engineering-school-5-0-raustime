@@ -6,18 +6,36 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"strings"
 	"testing"
+
+	"weatherapi/internal/contracts"
+
+	"github.com/stretchr/testify/assert"
 )
+
+// MockMailerService — мок реалізації MailerServiceProvider
+type MockMailerService struct{}
+
+func (m *MockMailerService) SendConfirmationEmail(ctx context.Context, email, token string) error {
+	return nil
+}
+
+func (m *MockMailerService) SendWeatherEmail(ctx context.Context, email, city string, weather contracts.WeatherData, token string) error {
+	return nil
+}
 
 func TestSubscriptionFlow(t *testing.T) {
 	defer cleanupTestData()
 
 	email := "test@example.com"
 
+	// створюємо сервіс з моком
+	//service := subscription_service.NewSubscriptionService(container.DB, &MockMailerService{})
+
 	// 1. Підписка
 	t.Run("Subscribe", func(t *testing.T) {
-		cleanupTestData() // очистка перед новою підпискою
+		cleanupTestData()
+
 		payload := map[string]string{
 			"email":     email,
 			"city":      "Kyiv",
@@ -25,56 +43,38 @@ func TestSubscriptionFlow(t *testing.T) {
 		}
 		jsonData, _ := json.Marshal(payload)
 
-		resp, err := http.Post(
-			testServer.URL+"/api/subscribe",
-			"application/json",
-			bytes.NewBuffer(jsonData),
-		)
-		if err != nil {
-			t.Fatalf("Failed to make subscribe request: %v", err)
-		}
+		resp, err := http.Post(testServer.URL+"/api/subscribe", "application/json", bytes.NewBuffer(jsonData))
+		assert.NoError(t, err)
 		defer resp.Body.Close()
 
-		if resp.StatusCode != http.StatusOK {
-			// Read the response body for debugging
-			body, _ := io.ReadAll(resp.Body)
-			t.Errorf("Expected status 200, got %d. Response: %s", resp.StatusCode, string(body))
-			return
-		}
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		var response map[string]interface{}
-		if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-			t.Fatalf("Failed to decode response: %v", err)
-		}
+		err = json.NewDecoder(resp.Body).Decode(&response)
+		assert.NoError(t, err)
 
-		if message, ok := response["message"]; !ok || !strings.Contains(message.(string), "confirmation") {
-			t.Error("Expected confirmation message in response")
-		}
+		message, ok := response["message"]
+		assert.True(t, ok)
+		assert.Contains(t, message.(string), "confirmation")
 	})
 
-	// 2. Отримання токену з БД для тестування
+	// 2. Отримання токену з БД
 	var token string
-	// Use Bun ORM syntax instead of raw SQL
 	err := container.DB.NewSelect().
 		Column("token").
 		Table("subscriptions").
 		Where("email = ?", email).
 		Scan(context.Background(), &token)
-	if err != nil {
-		t.Fatalf("Failed to get token from database: %v", err)
-	}
+	assert.NoError(t, err)
+	assert.NotEmpty(t, token)
 
 	// 3. Підтвердження підписки
 	t.Run("Confirm", func(t *testing.T) {
 		resp, err := http.Get(testServer.URL + "/api/confirm/" + token)
-		if err != nil {
-			t.Fatalf("Failed to make confirm request: %v", err)
-		}
+		assert.NoError(t, err)
 		defer resp.Body.Close()
 
-		if resp.StatusCode != http.StatusOK {
-			t.Errorf("Expected status 200, got %d", resp.StatusCode)
-		}
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		var subscription struct {
 			Confirmed bool `bun:"confirmed"`
@@ -84,41 +84,26 @@ func TestSubscriptionFlow(t *testing.T) {
 			Column("confirmed").
 			Where("email = ?", email).
 			Scan(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to check confirmation status: %v", err)
-		}
-
-		if !subscription.Confirmed {
-			t.Error("Subscription should be confirmed")
-		}
+		assert.NoError(t, err)
+		assert.True(t, subscription.Confirmed)
 	})
 
 	// 4. Відписка
 	t.Run("Unsubscribe", func(t *testing.T) {
 		resp, err := http.Get(testServer.URL + "/api/unsubscribe/" + token)
-		if err != nil {
-			t.Fatalf("Failed to make unsubscribe request: %v", err)
-		}
+		assert.NoError(t, err)
 		defer resp.Body.Close()
 
-		if resp.StatusCode != http.StatusOK {
-			t.Errorf("Expected status 200, got %d", resp.StatusCode)
-		}
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-		// Перевірка, що підписка видалена з БД
 		var count int
 		err = container.DB.NewSelect().
 			Column("count(*)").
 			Table("subscriptions").
 			Where("email = ?", email).
 			Scan(context.Background(), &count)
-		if err != nil {
-			t.Fatalf("Failed to check subscription deletion: %v", err)
-		}
-
-		if count != 0 {
-			t.Error("Subscription should be deleted")
-		}
+		assert.NoError(t, err)
+		assert.Equal(t, 0, count)
 	})
 }
 
@@ -130,71 +115,34 @@ func TestInvalidSubscriptionRequests(t *testing.T) {
 		payload        map[string]string
 		expectedStatus int
 	}{
-		{
-			name:           "Empty email",
-			payload:        map[string]string{"email": "", "city": "Kyiv", "frequency": "daily"},
-			expectedStatus: http.StatusBadRequest,
-		},
-		{
-			name:           "Invalid email format",
-			payload:        map[string]string{"email": "invalid-email", "city": "Kyiv", "frequency": "daily"},
-			expectedStatus: http.StatusBadRequest,
-		},
-		{
-			name:           "Missing email field",
-			payload:        map[string]string{"city": "Kyiv", "frequency": "daily"},
-			expectedStatus: http.StatusBadRequest,
-		},
-		{
-			name:           "Missing city field",
-			payload:        map[string]string{"email": "test@example.com", "frequency": "daily"},
-			expectedStatus: http.StatusBadRequest,
-		},
-		{
-			name:           "Missing frequency field",
-			payload:        map[string]string{"email": "test@example.com", "city": "Kyiv"},
-			expectedStatus: http.StatusBadRequest,
-		},
-		{
-			name:           "Invalid frequency",
-			payload:        map[string]string{"email": "test@example.com", "city": "Kyiv", "frequency": "weekly"},
-			expectedStatus: http.StatusBadRequest,
-		},
+		{"Empty email", map[string]string{"email": "", "city": "Kyiv", "frequency": "daily"}, http.StatusBadRequest},
+		{"Invalid email format", map[string]string{"email": "invalid-email", "city": "Kyiv", "frequency": "daily"}, http.StatusBadRequest},
+		{"Missing email field", map[string]string{"city": "Kyiv", "frequency": "daily"}, http.StatusBadRequest},
+		{"Missing city field", map[string]string{"email": "test@example.com", "frequency": "daily"}, http.StatusBadRequest},
+		{"Missing frequency field", map[string]string{"email": "test@example.com", "city": "Kyiv"}, http.StatusBadRequest},
+		{"Invalid frequency", map[string]string{"email": "test@example.com", "city": "Kyiv", "frequency": "weekly"}, http.StatusBadRequest},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			jsonData, _ := json.Marshal(tt.payload)
-
-			resp, err := http.Post(
-				testServer.URL+"/api/subscribe",
-				"application/json",
-				bytes.NewBuffer(jsonData),
-			)
-			if err != nil {
-				t.Fatalf("Failed to make request: %v", err)
-			}
+			resp, err := http.Post(testServer.URL+"/api/subscribe", "application/json", bytes.NewBuffer(jsonData))
+			assert.NoError(t, err)
 			defer resp.Body.Close()
 
-			if resp.StatusCode != tt.expectedStatus {
-				// Read response body for debugging
-				body, _ := io.ReadAll(resp.Body)
-				t.Errorf("Expected status %d, got %d. Response: %s", tt.expectedStatus, resp.StatusCode, string(body))
-			}
+			body, _ := io.ReadAll(resp.Body)
+			assert.Equal(t, tt.expectedStatus, resp.StatusCode, "Response: %s", string(body))
 		})
 	}
 }
 
-// Add cleanup function if it doesn't exist
 func cleanupTestData() {
 	if container != nil && container.DB != nil {
-		// Clean up test data using Bun syntax
 		_, err := container.DB.NewDelete().
 			Table("subscriptions").
 			Where("email LIKE ? OR email LIKE ?", "%@example.com", "%test%").
 			Exec(context.Background())
 		if err != nil {
-			// Log error but don't fail the test
 			println("Cleanup error:", err.Error())
 		}
 	}

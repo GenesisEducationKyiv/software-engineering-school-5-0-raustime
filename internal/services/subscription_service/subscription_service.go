@@ -2,6 +2,7 @@ package subscription_service
 
 import (
 	"context"
+	"net/mail"
 	"time"
 
 	"weatherapi/internal/apierrors"
@@ -42,6 +43,25 @@ func NewSubscriptionService(db bun.IDB, mailer mailer_service.MailerService) Sub
 // CreateSubscription creates a new subscription
 func (s SubscriptionService) CreateSubscription(ctx context.Context, email, city, frequency string) error {
 	return s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+
+		// Валідація email
+		if email == "" {
+			return apierrors.ErrInvalidEmail
+		}
+		if _, err := mail.ParseAddress(email); err != nil {
+			return apierrors.ErrInvalidEmail
+		}
+
+		// Валідація city
+		if city == "" {
+			return apierrors.ErrInvalidCity
+		}
+
+		// Валідація frequency
+		validFreq := map[string]bool{"daily": true, "hourly": true}
+		if !validFreq[frequency] {
+			return apierrors.ErrInvalidFrequency
+		}
 		var existing models.Subscription
 		err := tx.NewSelect().Model(&existing).Where("email = ?", email).Scan(ctx)
 		if err == nil {
