@@ -47,10 +47,12 @@ func TestSendConfirmationEmail(t *testing.T) {
 	assert.NoError(t, err)
 
 	mockSender := &MockSender{}
+
 	service := mailer_service.NewMailerService(mockSender, "https://test.com")
 	service.SetTemplateDir(tmpDir)
 
 	err = service.SendConfirmationEmail(context.Background(), "user@example.com", "abc123")
+
 	assert.NoError(t, err)
 	assert.Equal(t, "user@example.com", mockSender.LastTo)
 	assert.Equal(t, "Confirm your subscription", mockSender.LastSubject)
@@ -63,6 +65,7 @@ func TestSendWeatherEmail(t *testing.T) {
 	assert.NoError(t, err)
 
 	mockSender := &MockSender{}
+
 	service := mailer_service.NewMailerService(mockSender, "https://test.com")
 	service.SetTemplateDir(tmpDir)
 
@@ -82,6 +85,10 @@ func TestSendWeatherEmail(t *testing.T) {
 }
 
 func TestInvalidTemplateHandling(t *testing.T) {
+	// Disable logs for this test
+	os.Setenv("DISABLE_TEST_LOGS", "1")
+	defer os.Unsetenv("DISABLE_TEST_LOGS")
+
 	tmpDir := t.TempDir()
 	os.MkdirAll(tmpDir, 0755)
 	err := os.WriteFile(filepath.Join(tmpDir, "confirmation_email.html"), []byte("{{.MissingField}}"), 0644)
@@ -93,5 +100,5 @@ func TestInvalidTemplateHandling(t *testing.T) {
 
 	err = service.SendConfirmationEmail(context.Background(), "user@example.com", "badtoken")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to execute template")
+	assert.Contains(t, err.Error(), "failed to render confirmation template")
 }

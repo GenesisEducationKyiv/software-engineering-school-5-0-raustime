@@ -1,0 +1,142 @@
+package integration
+
+import (
+	"bytes"
+	"encoding/json"
+	"net/http"
+	"strings"
+	"testing"
+)
+
+func TestSubscriptionFlow(t *testing.T) {
+	defer cleanupTestData()
+
+	email := "test@example.com"
+
+	// 1. Підписка
+	t.Run("Subscribe", func(t *testing.T) {
+		payload := map[string]string{"email": email}
+		jsonData, _ := json.Marshal(payload)
+
+		resp, err := http.Post(
+			testServer.URL+"/api/subscribe",
+			"application/json",
+			bytes.NewBuffer(jsonData),
+		)
+		if err != nil {
+			t.Fatalf("Failed to make subscribe request: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", resp.StatusCode)
+		}
+
+		var response map[string]interface{}
+		json.NewDecoder(resp.Body).Decode(&response)
+		
+		if message, ok := response["message"]; !ok || !strings.Contains(message.(string), "confirmation") {
+			t.Error("Expected confirmation message in response")
+		}
+	})
+
+	// 2. Отримання токену з БД для тестування
+	var token string
+	row := testDB.QueryRow("SELECT token FROM subscriptions WHERE email = $1", email)
+	if err := row.Scan(&token); err != nil {
+		t.Fatalf("Failed to get token from database: %v", err)
+	}
+
+	// 3. Підтвердження підписки
+	t.Run("Confirm", func(t *testing.T) {
+		resp, err := http.Get(testServer.URL + "/api/confirm/" + token)
+		if err != nil {
+			t.Fatalf("Failed to make confirm request: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", resp.StatusCode)
+		}
+
+		// Перевірка, що підписка підтверджена в БД
+		var confirmed bool
+		row := testDB.QueryRow("SELECT confirmed FROM subscriptions WHERE email = $1", email)
+		if err := row.Scan(&confirmed); err != nil {
+			t.Fatalf("Failed to check confirmation status: %v", err)
+		}
+
+		if !confirmed {
+			t.Error("Subscription should be confirmed")
+		}
+	})
+
+	// 4. Відписка
+	t.Run("Unsubscribe", func(t *testing.T) {
+		resp, err := http.Get(testServer.URL + "/api/unsubscribe/" + token)
+		if err != nil {
+			t.Fatalf("Failed to make unsubscribe request: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", resp.StatusCode)
+		}
+
+		// Перевірка, що підписка видалена з БД
+		var count int
+		row := testDB.QueryRow("SELECT COUNT(*) FROM subscriptions WHERE email = $1", email)
+		if err := row.Scan(&count); err != nil {
+			t.Fatalf("Failed to check subscription deletion: %v", err)
+		}
+
+		if count != 0 {
+			t.Error("Subscription should be deleted")
+		}
+	})
+}
+
+func TestInvalidSubscriptionRequests(t *testing.T) {
+	defer cleanupTestData()
+
+	tests := []struct {
+		name           string
+		payload        map[string]string
+		expectedStatus int
+	}{
+		{
+			name:           "Empty email",
+			payload:        map[string]string{"email": ""},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "Invalid email format",
+			payload:        map[string]string{"email": "invalid-email"},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "Missing email field",
+			payload:        map[string]string{},
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			jsonData, _ := json.Marshal(tt.payload)
+
+			resp, err := http.Post(
+				testServer.URL+"/api/subscribe",
+				"application/json",
+				bytes.NewBuffer(jsonData),
+			)
+			if err != nil {
+				t.Fatalf("Failed to make request: %v", err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
+			}
+		})
+	}

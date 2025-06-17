@@ -35,7 +35,7 @@ services:
     depends_on:
       - db
 
-  test-runner:
+  test-runner-unit:
     build: .
     env_file:
       - .env
@@ -50,7 +50,45 @@ services:
       - BUNDEBUG=1
     working_dir: /app
     entrypoint: ["/app/wait-for-postgres.sh"]
-    command: ["go", "test", "-v", "./..."]
+    command: ["make", "test-unit"]
+    depends_on:
+      - db
+  
+  test-runner-integration:
+    build: .
+    env_file:
+      - .env
+    environment:
+      - TEST_DB_URL=${TEST_DB_URL}
+      - TEMPLATE_DIR=${TEMPLATE_DIR}
+      - APP_BASE_URL=${APP_BASE_URL}
+      - PGUSER=${PGUSER}
+      - PGPASSWORD=${PGPASSWORD}
+      - PGHOST=db
+      - PGPORT=5432
+      - BUNDEBUG=1
+    working_dir: /app
+    entrypoint: ["/app/wait-for-postgres.sh"]
+    command: ["make", "test-integration"]
+    depends_on:
+      - db
+
+  test-runner-e2e:
+    build: .
+    env_file:
+      - .env
+    environment:
+      - TEST_DB_URL=${TEST_DB_URL}
+      - TEMPLATE_DIR=${TEMPLATE_DIR}
+      - APP_BASE_URL=${APP_BASE_URL}
+      - PGUSER=${PGUSER}
+      - PGPASSWORD=${PGPASSWORD}
+      - PGHOST=db
+      - PGPORT=5432
+      - BUNDEBUG=1
+    working_dir: /app
+    entrypoint: ["/app/wait-for-postgres.sh"]
+    command: ["make", "test-e2e"]
     depends_on:
       - db
 

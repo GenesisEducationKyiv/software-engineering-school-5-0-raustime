@@ -3,6 +3,7 @@ package testutil
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -36,7 +37,8 @@ func SetupTestDB(t *testing.T) *bun.DB {
 
 	// Get migrations directory path
 	migrationsDir := getMigrationsDir()
-
+	//migrationsDir := filepath.Join(".", "migrations")
+	t.Logf("Resolved migrations path: %s", migrationsDir)
 	// Run migrations
 	migrationRunner := migration.NewRunner(db, migrationsDir)
 	if err := migrationRunner.RunMigrations(ctx); err != nil {
@@ -75,15 +77,21 @@ func cleanupTestDB(t *testing.T, db *bun.DB) {
 	}
 }
 
-// getMigrationsDir returns the path to migrations directory
+// func getMigrationsDir() string {
+// 	_, filename, _, _ := runtime.Caller(0)
+// 	dir := filepath.Dir(filename)
+// 	projectRoot := filepath.Join(dir, "..", "..")
+// 	migrationsDir := filepath.Join(projectRoot, "migrations")
+// 	return migrationsDir
+// }
+
 func getMigrationsDir() string {
-	// Get the current file's directory
 	_, filename, _, _ := runtime.Caller(0)
 	dir := filepath.Dir(filename)
-
-	// Go up to project root and find migrations directory
 	projectRoot := filepath.Join(dir, "..", "..")
 	migrationsDir := filepath.Join(projectRoot, "migrations")
+
+	fmt.Println("💡 Looking for migrations at:", migrationsDir) // <- debug
 
 	return migrationsDir
 }

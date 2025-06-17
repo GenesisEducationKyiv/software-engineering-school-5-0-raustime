@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"os"
 	"path/filepath"
 
 	"weatherapi/internal/contracts"
@@ -21,7 +22,7 @@ type MailerServiceProvider interface {
 type MailerService struct {
 	emailSender contracts.EmailSenderProvider
 	appBaseURL  string
-	templateDir string
+	TemplateDir string
 }
 
 // NewMailerService creates a new mailer service
@@ -29,13 +30,13 @@ func NewMailerService(emailSender contracts.EmailSenderProvider, baseURL string)
 	return MailerService{
 		emailSender: emailSender,
 		appBaseURL:  baseURL,
-		templateDir: "internal/templates", // default template directory
+		TemplateDir: "internal/templates", // default template directory
 	}
 }
 
 // SetTemplateDir sets custom template directory
-func (s MailerService) SetTemplateDir(dir string) {
-	s.templateDir = dir
+func (s *MailerService) SetTemplateDir(dir string) {
+	s.TemplateDir = dir
 }
 
 // SendConfirmationEmail sends confirmation email
@@ -83,17 +84,23 @@ func (s MailerService) SendWeatherEmail(ctx context.Context, email, city string,
 
 // renderTemplate renders HTML template with data
 func (s MailerService) renderTemplate(templateName string, data interface{}) (string, error) {
-	tmplPath := filepath.Join(s.templateDir, templateName)
+	// In renderTemplate method, replace log.Printf with:
+
+	tmplPath := filepath.Join(s.TemplateDir, templateName)
 
 	tmpl, err := template.ParseFiles(tmplPath)
 	if err != nil {
-		log.Printf("Failed to parse template %s: %v", tmplPath, err)
+		if os.Getenv("DISABLE_TEST_LOGS") == "" {
+			log.Printf("Failed to parse template %s: %v", tmplPath, err)
+		}
 		return "", fmt.Errorf("failed to parse template %s: %w", tmplPath, err)
 	}
 
 	var body bytes.Buffer
 	if err := tmpl.Execute(&body, data); err != nil {
-		log.Printf("Failed to execute template: %v", err)
+		if os.Getenv("DISABLE_TEST_LOGS") == "" {
+			log.Printf("Failed to execute template: %v", err)
+		}
 		return "", fmt.Errorf("failed to execute template: %w", err)
 	}
 
