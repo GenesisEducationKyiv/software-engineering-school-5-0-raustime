@@ -77,14 +77,6 @@ func cleanupTestDB(t *testing.T, db *bun.DB) {
 	}
 }
 
-// func getMigrationsDir() string {
-// 	_, filename, _, _ := runtime.Caller(0)
-// 	dir := filepath.Dir(filename)
-// 	projectRoot := filepath.Join(dir, "..", "..")
-// 	migrationsDir := filepath.Join(projectRoot, "migrations")
-// 	return migrationsDir
-// }
-
 func getMigrationsDir() string {
 	_, filename, _, _ := runtime.Caller(0)
 	dir := filepath.Dir(filename)

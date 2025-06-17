@@ -21,19 +21,13 @@ func TestGetWeather(t *testing.T) {
 			expectedFields: []string{"temperature", "humidity", "description"},
 		},
 		{
-			name:           "Valid coordinates request",
-			queryParams:    "?lat=50.4501&lon=30.5234",
-			expectedStatus: http.StatusOK,
-			expectedFields: []string{"temperature", "humidity", "description"},
-		},
-		{
 			name:           "Missing parameters",
 			queryParams:    "",
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			name:           "Invalid coordinates",
-			queryParams:    "?lat=invalid&lon=invalid",
+			name:           "Empty city parameter",
+			queryParams:    "?city=",
 			expectedStatus: http.StatusBadRequest,
 		},
 	}

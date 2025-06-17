@@ -20,6 +20,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
+	"github.com/uptrace/bun/driver/pgdriver"
 	"github.com/uptrace/bun/extra/bundebug"
 )
 
@@ -85,11 +86,8 @@ func Initialize() *TestContainer {
 }
 
 func initDatabase(cfg *config.Config) (*bun.DB, error) {
-	sqlDB, err := sql.Open("pg", cfg.GetDatabaseURL())
-	if err != nil {
-		return nil, err
-	}
-
+	sqlDB := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(cfg.GetDatabaseURL())))
+	log.Println(cfg.Environment)
 	db := bun.NewDB(sqlDB, pgdialect.New())
 
 	if cfg.IsBunDebugEnabled() {
@@ -114,7 +112,7 @@ func resolveMigrationsPath() string {
 			log.Printf("📁 Using migrations path from env: %s", migrationsPath)
 			return migrationsPath
 		} else {
-			//log.Printf("❌ Env path not found: %v", err)
+			log.Printf("❌ Env path not found: %v", err)
 		}
 	}
 

@@ -74,23 +74,17 @@ services:
       - db
 
   test-runner-e2e:
-    build: .
-    env_file:
-      - .env
+    build:
+      context: .
+      dockerfile: tests/e2e/Dockerfile.playwright
     environment:
-      - TEST_DB_URL=${TEST_DB_URL}
-      - TEMPLATE_DIR=${TEMPLATE_DIR}
-      - APP_BASE_URL=${APP_BASE_URL}
-      - PGUSER=${PGUSER}
-      - PGPASSWORD=${PGPASSWORD}
-      - PGHOST=db
-      - PGPORT=5432
-      - BUNDEBUG=1
-    working_dir: /app
-    entrypoint: ["/app/wait-for-postgres.sh"]
-    command: ["make", "test-e2e"]
+      - APP_BASE_URL=http://api:8080
     depends_on:
+      - api
       - db
+    #working_dir: /app
+    #entrypoint: ["/app/wait-for-postgres.sh"]
+    #command: ["make", "test-e2e"]
 
 volumes:
   weather-api-pgdata:

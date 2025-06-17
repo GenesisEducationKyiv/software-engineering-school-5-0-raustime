@@ -2,7 +2,9 @@ package integration
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -15,7 +17,12 @@ func TestSubscriptionFlow(t *testing.T) {
 
 	// 1. Підписка
 	t.Run("Subscribe", func(t *testing.T) {
-		payload := map[string]string{"email": email}
+		cleanupTestData() // очистка перед новою підпискою
+		payload := map[string]string{
+			"email":     email,
+			"city":      "Kyiv",
+			"frequency": "daily",
+		}
 		jsonData, _ := json.Marshal(payload)
 
 		resp, err := http.Post(
@@ -29,12 +36,17 @@ func TestSubscriptionFlow(t *testing.T) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			t.Errorf("Expected status 200, got %d", resp.StatusCode)
+			// Read the response body for debugging
+			body, _ := io.ReadAll(resp.Body)
+			t.Errorf("Expected status 200, got %d. Response: %s", resp.StatusCode, string(body))
+			return
 		}
 
 		var response map[string]interface{}
-		json.NewDecoder(resp.Body).Decode(&response)
-		
+		if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+			t.Fatalf("Failed to decode response: %v", err)
+		}
+
 		if message, ok := response["message"]; !ok || !strings.Contains(message.(string), "confirmation") {
 			t.Error("Expected confirmation message in response")
 		}
@@ -42,8 +54,13 @@ func TestSubscriptionFlow(t *testing.T) {
 
 	// 2. Отримання токену з БД для тестування
 	var token string
-	row := testDB.QueryRow("SELECT token FROM subscriptions WHERE email = $1", email)
-	if err := row.Scan(&token); err != nil {
+	// Use Bun ORM syntax instead of raw SQL
+	err := container.DB.NewSelect().
+		Column("token").
+		Table("subscriptions").
+		Where("email = ?", email).
+		Scan(context.Background(), &token)
+	if err != nil {
 		t.Fatalf("Failed to get token from database: %v", err)
 	}
 
@@ -59,14 +76,19 @@ func TestSubscriptionFlow(t *testing.T) {
 			t.Errorf("Expected status 200, got %d", resp.StatusCode)
 		}
 
-		// Перевірка, що підписка підтверджена в БД
-		var confirmed bool
-		row := testDB.QueryRow("SELECT confirmed FROM subscriptions WHERE email = $1", email)
-		if err := row.Scan(&confirmed); err != nil {
+		var subscription struct {
+			Confirmed bool `bun:"confirmed"`
+		}
+		err = container.DB.NewSelect().
+			Model(&subscription).
+			Column("confirmed").
+			Where("email = ?", email).
+			Scan(context.Background())
+		if err != nil {
 			t.Fatalf("Failed to check confirmation status: %v", err)
 		}
 
-		if !confirmed {
+		if !subscription.Confirmed {
 			t.Error("Subscription should be confirmed")
 		}
 	})
@@ -85,8 +107,12 @@ func TestSubscriptionFlow(t *testing.T) {
 
 		// Перевірка, що підписка видалена з БД
 		var count int
-		row := testDB.QueryRow("SELECT COUNT(*) FROM subscriptions WHERE email = $1", email)
-		if err := row.Scan(&count); err != nil {
+		err = container.DB.NewSelect().
+			Column("count(*)").
+			Table("subscriptions").
+			Where("email = ?", email).
+			Scan(context.Background(), &count)
+		if err != nil {
 			t.Fatalf("Failed to check subscription deletion: %v", err)
 		}
 
@@ -106,17 +132,32 @@ func TestInvalidSubscriptionRequests(t *testing.T) {
 	}{
 		{
 			name:           "Empty email",
-			payload:        map[string]string{"email": ""},
+			payload:        map[string]string{"email": "", "city": "Kyiv", "frequency": "daily"},
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "Invalid email format",
-			payload:        map[string]string{"email": "invalid-email"},
+			payload:        map[string]string{"email": "invalid-email", "city": "Kyiv", "frequency": "daily"},
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "Missing email field",
-			payload:        map[string]string{},
+			payload:        map[string]string{"city": "Kyiv", "frequency": "daily"},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "Missing city field",
+			payload:        map[string]string{"email": "test@example.com", "frequency": "daily"},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "Missing frequency field",
+			payload:        map[string]string{"email": "test@example.com", "city": "Kyiv"},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "Invalid frequency",
+			payload:        map[string]string{"email": "test@example.com", "city": "Kyiv", "frequency": "weekly"},
 			expectedStatus: http.StatusBadRequest,
 		},
 	}
@@ -136,7 +177,25 @@ func TestInvalidSubscriptionRequests(t *testing.T) {
 			defer resp.Body.Close()
 
 			if resp.StatusCode != tt.expectedStatus {
-				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
+				// Read response body for debugging
+				body, _ := io.ReadAll(resp.Body)
+				t.Errorf("Expected status %d, got %d. Response: %s", tt.expectedStatus, resp.StatusCode, string(body))
 			}
 		})
 	}
+}
+
+// Add cleanup function if it doesn't exist
+func cleanupTestData() {
+	if container != nil && container.DB != nil {
+		// Clean up test data using Bun syntax
+		_, err := container.DB.NewDelete().
+			Table("subscriptions").
+			Where("email LIKE ? OR email LIKE ?", "%@example.com", "%test%").
+			Exec(context.Background())
+		if err != nil {
+			// Log error but don't fail the test
+			println("Cleanup error:", err.Error())
+		}
+	}
+}
