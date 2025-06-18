@@ -11,7 +11,7 @@ env:
 
 jobs:
   unit-tests:
-    name: 🧪 Unit Tests
+    name: Unit Tests
     runs-on: ubuntu-latest
     services:
       docker:
@@ -37,7 +37,7 @@ jobs:
         run: docker compose down -v
 
   integration-tests:
-    name: 🔗 Integration Tests
+    name: Integration Tests
     runs-on: ubuntu-latest
     services:
       docker:
@@ -72,7 +72,7 @@ jobs:
         run: docker compose down -v
 
   e2e-tests:
-    name: 🧪 E2E Tests
+    name: E2E Tests
     runs-on: ubuntu-latest
     services:
       docker:
