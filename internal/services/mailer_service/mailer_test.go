@@ -1,7 +1,9 @@
+// mailer_test.go
 package mailer_service_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,19 +12,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
-
-type MockSender struct {
-	LastTo      string
-	LastSubject string
-	LastBody    string
-}
-
-func (m *MockSender) Send(to, subject, body string) error {
-	m.LastTo = to
-	m.LastSubject = subject
-	m.LastBody = body
-	return nil
-}
 
 func setupTemplates(dir string) error {
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -46,7 +35,7 @@ func TestSendConfirmationEmail(t *testing.T) {
 	err := setupTemplates(tmpDir)
 	assert.NoError(t, err)
 
-	mockSender := &MockSender{}
+	mockSender := mailer_service.NewMockSender()
 
 	service := mailer_service.NewMailerService(mockSender, "https://test.com")
 	service.SetTemplateDir(tmpDir)
@@ -64,7 +53,7 @@ func TestSendWeatherEmail(t *testing.T) {
 	err := setupTemplates(tmpDir)
 	assert.NoError(t, err)
 
-	mockSender := &MockSender{}
+	mockSender := mailer_service.NewMockSender()
 
 	service := mailer_service.NewMailerService(mockSender, "https://test.com")
 	service.SetTemplateDir(tmpDir)
@@ -94,11 +83,88 @@ func TestInvalidTemplateHandling(t *testing.T) {
 	err := os.WriteFile(filepath.Join(tmpDir, "confirmation_email.html"), []byte("{{.MissingField}}"), 0644)
 	assert.NoError(t, err)
 
-	mockSender := &MockSender{}
+	mockSender := mailer_service.NewMockSender()
 	service := mailer_service.NewMailerService(mockSender, "https://test.com")
 	service.SetTemplateDir(tmpDir)
 
 	err = service.SendConfirmationEmail(context.Background(), "user@example.com", "badtoken")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to render confirmation template")
+}
+
+// Додаткові тести з використанням розширеного функціоналу MockSender
+func TestSendMultipleEmails(t *testing.T) {
+	tmpDir := t.TempDir()
+	err := setupTemplates(tmpDir)
+	assert.NoError(t, err)
+
+	mockSender := mailer_service.NewMockSender()
+	service := mailer_service.NewMailerService(mockSender, "https://test.com")
+	service.SetTemplateDir(tmpDir)
+
+	// Відправляємо кілька emails
+	emails := []string{"user1@example.com", "user2@example.com", "user3@example.com"}
+	for i, email := range emails {
+		token := fmt.Sprintf("token-%d", i)
+		err := service.SendConfirmationEmail(context.Background(), email, token)
+		assert.NoError(t, err)
+	}
+
+	// Перевіряємо загальну кількість
+	assert.Equal(t, len(emails), mockSender.GetSentEmailsCount())
+
+	// Перевіряємо що всі emails були відправлені
+	for _, email := range emails {
+		assert.True(t, mockSender.HasEmailBeenSentTo(email))
+	}
+
+	// Перевіряємо останній відправлений email
+	lastEmail := mockSender.GetLastSentEmail()
+	assert.NotNil(t, lastEmail)
+	assert.Equal(t, "user3@example.com", lastEmail.To)
+}
+
+func TestMockSenderErrorHandling(t *testing.T) {
+	tmpDir := t.TempDir()
+	err := setupTemplates(tmpDir)
+	assert.NoError(t, err)
+
+	mockSender := mailer_service.NewMockSender()
+	mockSender.SetShouldFail(true)
+	mockSender.SetErrorMessage("SMTP server unavailable")
+
+	service := mailer_service.NewMailerService(mockSender, "https://test.com")
+	service.SetTemplateDir(tmpDir)
+
+	err = service.SendConfirmationEmail(context.Background(), "user@example.com", "token")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "SMTP server unavailable")
+
+	// Перевіряємо що email не був "відправлений"
+	assert.Equal(t, 0, mockSender.GetSentEmailsCount())
+}
+
+func TestMockSenderReset(t *testing.T) {
+	tmpDir := t.TempDir()
+	err := setupTemplates(tmpDir)
+	assert.NoError(t, err)
+
+	mockSender := mailer_service.NewMockSender()
+	service := mailer_service.NewMailerService(mockSender, "https://test.com")
+	service.SetTemplateDir(tmpDir)
+
+	// Відправляємо email
+	err = service.SendConfirmationEmail(context.Background(), "user@example.com", "token")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, mockSender.GetSentEmailsCount())
+
+	// Очищаємо історію
+	mockSender.Clear()
+	assert.Equal(t, 0, mockSender.GetSentEmailsCount())
+	assert.Empty(t, mockSender.LastTo)
+
+	// Скидаємо повністю
+	mockSender.SetShouldFail(true)
+	mockSender.Reset()
+	assert.False(t, mockSender.ShouldFail)
 }
