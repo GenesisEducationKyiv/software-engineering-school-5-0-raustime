@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"os"
 	"testing"
 
 	"weatherapi/internal/contracts"
+	"weatherapi/internal/db/models"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -25,14 +27,20 @@ func (m *MockMailerService) SendWeatherEmail(ctx context.Context, email, city st
 }
 
 func TestSubscriptionFlow(t *testing.T) {
-	defer cleanupTestData()
+
+	// Change to project root
+	originalDir, _ := os.Getwd()
+	os.Chdir("../..") // Go up two levels: /app/tests/integration -> /app
+	defer func() {
+		os.Chdir(originalDir) // Restore original directory
+		cleanupTestData()
+	}()
 
 	email := "test@example.com"
 
 	// створюємо сервіс з моком
 	//service := subscription_service.NewSubscriptionService(container.DB, &MockMailerService{})
 
-	// 1. Підписка
 	t.Run("Subscribe", func(t *testing.T) {
 		cleanupTestData()
 
@@ -47,22 +55,23 @@ func TestSubscriptionFlow(t *testing.T) {
 		assert.NoError(t, err)
 		defer resp.Body.Close()
 
+		// Just check the status code - no JSON response expected
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-		var response map[string]interface{}
-		err = json.NewDecoder(resp.Body).Decode(&response)
+		// Optionally verify the subscription was created in the database
+		count, err := container.DB.NewSelect().
+			Model((*models.Subscription)(nil)).
+			Where("email = ?", email).
+			Count(context.Background())
 		assert.NoError(t, err)
-
-		message, ok := response["message"]
-		assert.True(t, ok)
-		assert.Contains(t, message.(string), "confirmation")
+		assert.Equal(t, 1, count, "Subscription should be created in database")
 	})
 
 	// 2. Отримання токену з БД
 	var token string
 	err := container.DB.NewSelect().
+		Model((*models.Subscription)(nil)).
 		Column("token").
-		Table("subscriptions").
 		Where("email = ?", email).
 		Scan(context.Background(), &token)
 	assert.NoError(t, err)
@@ -74,11 +83,11 @@ func TestSubscriptionFlow(t *testing.T) {
 		assert.NoError(t, err)
 		defer resp.Body.Close()
 
+		// Just check the status code - no JSON response expected
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-		var subscription struct {
-			Confirmed bool `bun:"confirmed"`
-		}
+		// Verify the subscription is confirmed in the database
+		var subscription models.Subscription
 		err = container.DB.NewSelect().
 			Model(&subscription).
 			Column("confirmed").
@@ -94,17 +103,18 @@ func TestSubscriptionFlow(t *testing.T) {
 		assert.NoError(t, err)
 		defer resp.Body.Close()
 
+		// Just check the status code - no JSON response expected
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-		var count int
-		err = container.DB.NewSelect().
-			Column("count(*)").
-			Table("subscriptions").
+		// Verify the subscription is deleted from the database
+		count, err := container.DB.NewSelect().
+			Model((*models.Subscription)(nil)).
 			Where("email = ?", email).
-			Scan(context.Background(), &count)
+			Count(context.Background())
 		assert.NoError(t, err)
 		assert.Equal(t, 0, count)
 	})
+
 }
 
 func TestInvalidSubscriptionRequests(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/mail"
 	"strings"
 
 	"weatherapi/internal/apierrors"
@@ -100,6 +101,9 @@ func (h *SubscriptionHandler) validateSubscriptionRequest(req contracts.Subscrip
 	var errs []string
 
 	if req.Email == "" {
+		errs = append(errs, apierrors.ErrInvalidEmail.Error())
+	} else if _, err := mail.ParseAddress(req.Email); err != nil {
+
 		errs = append(errs, apierrors.ErrInvalidEmail.Error())
 	}
 	if req.City == "" {
