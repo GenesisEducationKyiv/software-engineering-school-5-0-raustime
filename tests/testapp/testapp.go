@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"weatherapi/internal/adapters"
 	"weatherapi/internal/config"
 	"weatherapi/internal/db/migration"
@@ -67,10 +66,7 @@ func Initialize() *TestContainer {
 	api := adapters.OpenWeatherAdapter{}
 	weatherService := weather_service.NewWeatherService(api)
 
-	emailSender := mailer_service.NewSMTPSender(
-		cfg.SMTPUser, cfg.SMTPPassword, cfg.SMTPHost, strconv.Itoa(cfg.SMTPPort),
-	)
-	mailerService := mailer_service.NewMailerService(emailSender, cfg.AppBaseURL)
+	mailerService := mailer_service.NewMailerService(cfg)
 
 	subscriptionService := subscription_service.NewSubscriptionService(db, mailerService)
 	router := server.NewRouter(weatherService, subscriptionService, mailerService)

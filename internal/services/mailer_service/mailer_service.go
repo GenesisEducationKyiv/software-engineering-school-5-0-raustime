@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"weatherapi/internal/config"
 	"weatherapi/internal/contracts"
 )
 
@@ -26,17 +27,49 @@ type MailerService struct {
 }
 
 // NewMailerService creates a new mailer service
-func NewMailerService(emailSender contracts.EmailSenderProvider, baseURL string) MailerService {
+// NewMailerService creates a new mailer service with automatic sender selection based on config
+func NewMailerService(cfg *config.Config) MailerService {
+	var emailSender contracts.EmailSenderProvider
+
+	if cfg.IsTest() {
+		// Use mock sender for tests
+		emailSender = NewMockSender()
+	} else {
+		// Use SMTP sender for production/development
+		smtpPort := fmt.Sprintf("%d", cfg.SMTPPort)
+		emailSender = NewSMTPSender(
+			cfg.SMTPUser,
+			cfg.SMTPPassword,
+			cfg.SMTPHost,
+			smtpPort,
+		)
+	}
+
+	return MailerService{
+		emailSender: emailSender,
+		appBaseURL:  cfg.AppBaseURL,
+		TemplateDir: "internal/templates", // default template directory
+	}
+}
+
+// NewMailerServiceWithSender creates a new mailer service with custom email sender
+// This is useful for dependency injection in tests or when you want to provide your own sender
+func NewMailerServiceWithSender(emailSender contracts.EmailSenderProvider, baseURL string) MailerService {
 	return MailerService{
 		emailSender: emailSender,
 		appBaseURL:  baseURL,
-		TemplateDir: "internal/templates", // default template directory
+		TemplateDir: "internal/templates",
 	}
 }
 
 // SetTemplateDir sets custom template directory
 func (s *MailerService) SetTemplateDir(dir string) {
 	s.TemplateDir = dir
+}
+
+// GetEmailSender returns the underlying email sender (useful for testing)
+func (s *MailerService) GetEmailSender() contracts.EmailSenderProvider {
+	return s.emailSender
 }
 
 // SendConfirmationEmail sends confirmation email

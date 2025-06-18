@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"weatherapi/internal/config"
 	"weatherapi/internal/contracts"
 	"weatherapi/internal/services/mailer_service"
 
@@ -30,14 +31,45 @@ func setupTemplates(dir string) error {
 	return nil
 }
 
+func createTestConfig() *config.Config {
+	return &config.Config{
+		AppBaseURL:   "https://test.com",
+		Environment:  "test",
+		SMTPHost:     "test-smtp.com",
+		SMTPPort:     587,
+		SMTPUser:     "test@example.com",
+		SMTPPassword: "testpass",
+	}
+}
+
 func TestSendConfirmationEmail(t *testing.T) {
 	tmpDir := t.TempDir()
 	err := setupTemplates(tmpDir)
 	assert.NoError(t, err)
 
-	mockSender := mailer_service.NewMockSender()
+	cfg := createTestConfig()
+	service := mailer_service.NewMailerService(cfg)
+	service.SetTemplateDir(tmpDir)
 
-	service := mailer_service.NewMailerService(mockSender, "https://test.com")
+	// Отримуємо mock sender для перевірки
+	mockSender, ok := service.GetEmailSender().(*mailer_service.MockSender)
+	assert.True(t, ok, "Expected MockSender in test environment")
+
+	err = service.SendConfirmationEmail(context.Background(), "user@example.com", "abc123")
+
+	assert.NoError(t, err)
+	assert.Equal(t, "user@example.com", mockSender.LastTo)
+	assert.Equal(t, "Confirm your subscription", mockSender.LastSubject)
+	assert.Contains(t, mockSender.LastBody, "https://test.com/api/confirm/abc123")
+}
+
+func TestSendConfirmationEmailWithCustomSender(t *testing.T) {
+	tmpDir := t.TempDir()
+	err := setupTemplates(tmpDir)
+	assert.NoError(t, err)
+
+	mockSender := mailer_service.NewMockSender()
+	service := mailer_service.NewMailerServiceWithSender(mockSender, "https://test.com")
 	service.SetTemplateDir(tmpDir)
 
 	err = service.SendConfirmationEmail(context.Background(), "user@example.com", "abc123")
@@ -53,9 +85,36 @@ func TestSendWeatherEmail(t *testing.T) {
 	err := setupTemplates(tmpDir)
 	assert.NoError(t, err)
 
-	mockSender := mailer_service.NewMockSender()
+	cfg := createTestConfig()
+	service := mailer_service.NewMailerService(cfg)
+	service.SetTemplateDir(tmpDir)
 
-	service := mailer_service.NewMailerService(mockSender, "https://test.com")
+	// Отримуємо mock sender для перевірки
+	mockSender, ok := service.GetEmailSender().(*mailer_service.MockSender)
+	assert.True(t, ok, "Expected MockSender in test environment")
+
+	data := contracts.WeatherData{
+		Description: "Cloudy",
+		Temperature: 21.5,
+		Humidity:    80,
+	}
+
+	err = service.SendWeatherEmail(context.Background(), "user@example.com", "Kyiv", data, "xyz789")
+	assert.NoError(t, err)
+	assert.Equal(t, "user@example.com", mockSender.LastTo)
+	assert.Contains(t, mockSender.LastSubject, "Kyiv")
+	assert.Contains(t, mockSender.LastBody, "Cloudy")
+	assert.Contains(t, mockSender.LastBody, "21.5")
+	assert.Contains(t, mockSender.LastBody, "https://test.com/api/unsubscribe/xyz789")
+}
+
+func TestSendWeatherEmailWithCustomSender(t *testing.T) {
+	tmpDir := t.TempDir()
+	err := setupTemplates(tmpDir)
+	assert.NoError(t, err)
+
+	mockSender := mailer_service.NewMockSender()
+	service := mailer_service.NewMailerServiceWithSender(mockSender, "https://test.com")
 	service.SetTemplateDir(tmpDir)
 
 	data := contracts.WeatherData{
@@ -83,13 +142,37 @@ func TestInvalidTemplateHandling(t *testing.T) {
 	err := os.WriteFile(filepath.Join(tmpDir, "confirmation_email.html"), []byte("{{.MissingField}}"), 0644)
 	assert.NoError(t, err)
 
-	mockSender := mailer_service.NewMockSender()
-	service := mailer_service.NewMailerService(mockSender, "https://test.com")
+	cfg := createTestConfig()
+	service := mailer_service.NewMailerService(cfg)
 	service.SetTemplateDir(tmpDir)
 
 	err = service.SendConfirmationEmail(context.Background(), "user@example.com", "badtoken")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to render confirmation template")
+}
+
+func TestConfigBasedMailerService(t *testing.T) {
+	cfg := createTestConfig()
+	service := mailer_service.NewMailerService(cfg)
+
+	// Перевіряємо що в тестовому середовищі використовується MockSender
+	_, ok := service.GetEmailSender().(*mailer_service.MockSender)
+	assert.True(t, ok, "Expected MockSender in test environment")
+
+	// Тестуємо з production config
+	prodCfg := &config.Config{
+		AppBaseURL:   "https://prod.com",
+		Environment:  "production",
+		SMTPHost:     "smtp.gmail.com",
+		SMTPPort:     587,
+		SMTPUser:     "prod@example.com",
+		SMTPPassword: "prodpass",
+	}
+	prodService := mailer_service.NewMailerService(prodCfg)
+
+	// В продакшені має бути SMTP sender
+	_, ok = prodService.GetEmailSender().(*mailer_service.MockSender)
+	assert.False(t, ok, "Expected SMTP sender in production environment")
 }
 
 // Додаткові тести з використанням розширеного функціоналу MockSender
@@ -99,7 +182,7 @@ func TestSendMultipleEmails(t *testing.T) {
 	assert.NoError(t, err)
 
 	mockSender := mailer_service.NewMockSender()
-	service := mailer_service.NewMailerService(mockSender, "https://test.com")
+	service := mailer_service.NewMailerServiceWithSender(mockSender, "https://test.com")
 	service.SetTemplateDir(tmpDir)
 
 	// Відправляємо кілька emails
@@ -133,7 +216,7 @@ func TestMockSenderErrorHandling(t *testing.T) {
 	mockSender.SetShouldFail(true)
 	mockSender.SetErrorMessage("SMTP server unavailable")
 
-	service := mailer_service.NewMailerService(mockSender, "https://test.com")
+	service := mailer_service.NewMailerServiceWithSender(mockSender, "https://test.com")
 	service.SetTemplateDir(tmpDir)
 
 	err = service.SendConfirmationEmail(context.Background(), "user@example.com", "token")
@@ -150,7 +233,7 @@ func TestMockSenderReset(t *testing.T) {
 	assert.NoError(t, err)
 
 	mockSender := mailer_service.NewMockSender()
-	service := mailer_service.NewMailerService(mockSender, "https://test.com")
+	service := mailer_service.NewMailerServiceWithSender(mockSender, "https://test.com")
 	service.SetTemplateDir(tmpDir)
 
 	// Відправляємо email
@@ -167,4 +250,39 @@ func TestMockSenderReset(t *testing.T) {
 	mockSender.SetShouldFail(true)
 	mockSender.Reset()
 	assert.False(t, mockSender.ShouldFail)
+}
+
+func TestDifferentEnvironmentConfigs(t *testing.T) {
+	// Тест для різних середовищ
+	environments := []struct {
+		name        string
+		environment string
+		expectMock  bool
+	}{
+		{"test", "test", true},
+		{"development", "development", false},
+		{"production", "production", false},
+	}
+
+	for _, env := range environments {
+		t.Run(env.name, func(t *testing.T) {
+			cfg := &config.Config{
+				AppBaseURL:   "https://example.com",
+				Environment:  env.environment,
+				SMTPHost:     "smtp.example.com",
+				SMTPPort:     587,
+				SMTPUser:     "test@example.com",
+				SMTPPassword: "password",
+			}
+
+			service := mailer_service.NewMailerService(cfg)
+			_, isMock := service.GetEmailSender().(*mailer_service.MockSender)
+
+			if env.expectMock {
+				assert.True(t, isMock, "Expected MockSender for %s environment", env.environment)
+			} else {
+				assert.False(t, isMock, "Expected SMTP sender for %s environment", env.environment)
+			}
+		})
+	}
 }
