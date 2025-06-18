@@ -74,7 +74,6 @@ jobs:
   e2e-tests:
     name: 🧪 E2E Tests
     runs-on: ubuntu-latest
-
     services:
       docker:
         image: docker:24.0.5-dind
@@ -89,13 +88,13 @@ jobs:
       - name: Create .env file
         run: cp .env.ci .env
 
-      - name: Start services (API, DB, E2E)
+      - name: Start API, DB, and E2E Test Runner
         run: docker compose up -d db api test-runner-e2e
 
-      - name: Wait for services
+      - name: Wait for API to be ready
         run: sleep 10
 
-      - name: Run E2E tests
+      - name: Run E2E Tests
         run: docker compose exec -T test-runner-e2e make test-e2e
 
       - name: Clean up
