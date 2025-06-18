@@ -95,7 +95,7 @@ jobs:
         run: sleep 10
 
       - name: Run E2E Tests
-        run: docker compose exec -T test-runner-e2e make test-e2e
+        run: docker compose run --rm test-runner-e2e
 
       - name: Clean up
         run: docker compose down -v
