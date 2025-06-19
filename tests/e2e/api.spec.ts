@@ -32,7 +32,7 @@ test.describe('Weather API', () => {
   data: {
     email: `test+${Date.now()}@example.com`,
     city: 'Kyiv',
-    frequency: 'daily',  // <-- обов’язкове поле!
+    frequency: 'daily',  
   },
 })
 expect(res.status()).toBe(200)
