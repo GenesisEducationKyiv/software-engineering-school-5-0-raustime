@@ -5,7 +5,7 @@ test.describe('Weather API', () => {
 
   test.beforeAll(async ({ playwright }) => {
     api = await playwright.request.newContext({
-      baseURL: process.env.APP_BASE_URL || 'http://api:8080',
+      baseURL: process.env.APP_BASE_URL || 'http://localhost:8080',
     })
   })
 

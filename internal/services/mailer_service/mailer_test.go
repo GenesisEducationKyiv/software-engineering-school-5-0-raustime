@@ -214,7 +214,7 @@ func TestMockSenderReset(t *testing.T) {
 
 func TestConfigValues(t *testing.T) {
 	// Тест для перевірки що конфігурація завантажується правильно
-	assert.Equal(t, "https://test.com", cfg.AppBaseURL)
+	assert.Equal(t, "http://localhost:8080", cfg.AppBaseURL)
 	assert.Equal(t, "test@example.com", cfg.SMTPUser)
 	assert.Equal(t, "test-smtp.com", cfg.SMTPHost)
 	assert.Equal(t, 587, cfg.SMTPPort)
