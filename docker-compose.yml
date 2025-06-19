@@ -10,6 +10,7 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
       - weather-api-pgdata:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - '5432:5432'
     restart: unless-stopped
@@ -77,7 +78,7 @@ services:
       context: .
       dockerfile: tests/e2e/Dockerfile.playwright
     environment:
-      - APP_BASE_URL=http://localhost:8080
+      - APP_BASE_URL=http://api:8080
     depends_on:
       - api
       - db
