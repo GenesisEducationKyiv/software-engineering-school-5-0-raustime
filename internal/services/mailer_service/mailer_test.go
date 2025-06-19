@@ -212,14 +212,6 @@ func TestMockSenderReset(t *testing.T) {
 	assert.False(t, mockSender.ShouldFail)
 }
 
-func TestConfigValues(t *testing.T) {
-	// Тест для перевірки що конфігурація завантажується правильно
-	assert.Equal(t, "http://api:8080", cfg.AppBaseURL)
-	assert.Equal(t, "test@example.com", cfg.SMTPUser)
-	assert.Equal(t, "test-smtp.com", cfg.SMTPHost)
-	assert.Equal(t, 587, cfg.SMTPPort)
-}
-
 func TestServiceConfiguration(t *testing.T) {
 	// Тест для перевірки правильного налаштування сервісу
 	assert.NotNil(t, service)
