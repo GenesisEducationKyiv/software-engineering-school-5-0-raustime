@@ -41,8 +41,12 @@ func TestGetWeather(t *testing.T) {
 			}
 			defer resp.Body.Close()
 
+			bodyBytes, err := io.ReadAll(resp.Body)
+			if err != nil {
+				t.Fatalf("Failed to read response body: %v", err)
+			}
+
 			if resp.StatusCode != tt.expectedStatus {
-				bodyBytes, _ := io.ReadAll(resp.Body)
 				t.Errorf("Expected status %d, got %d. Body: %s", tt.expectedStatus, resp.StatusCode, string(bodyBytes))
 			}
 
@@ -52,7 +56,7 @@ func TestGetWeather(t *testing.T) {
 				}
 
 				var weatherData map[string]interface{}
-				if err := json.NewDecoder(resp.Body).Decode(&weatherData); err != nil {
+				if err := json.Unmarshal(bodyBytes, &weatherData); err != nil {
 					t.Fatalf("Failed to decode response: %v", err)
 				}
 
