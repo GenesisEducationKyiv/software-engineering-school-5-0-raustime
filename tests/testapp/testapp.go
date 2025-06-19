@@ -35,7 +35,8 @@ type TestContainer struct {
 func Initialize() *TestContainer {
 	_ = godotenv.Load(".env.test")
 
-	cfg, err := config.Load()
+	cfg, err := config.LoadTestConfig()
+
 	if err != nil {
 		log.Fatalf("❌ Failed to load config for test: %v", err)
 	}
@@ -66,7 +67,8 @@ func Initialize() *TestContainer {
 	api := adapters.OpenWeatherAdapter{}
 	weatherService := weather_service.NewWeatherService(api)
 
-	mailerService := mailer_service.NewMailerService(cfg)
+	mockSender := mailer_service.NewMockSender()
+	mailerService := mailer_service.NewMailerService(mockSender, cfg.AppBaseURL)
 
 	subscriptionService := subscription_service.NewSubscriptionService(db, mailerService)
 	router := server.NewRouter(weatherService, subscriptionService, mailerService)
@@ -82,7 +84,9 @@ func Initialize() *TestContainer {
 }
 
 func initDatabase(cfg *config.Config) (*bun.DB, error) {
+
 	sqlDB := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(cfg.GetDatabaseURL())))
+	log.Println("💡 DB_URL =", cfg.GetDatabaseURL())
 	log.Println(cfg.Environment)
 	db := bun.NewDB(sqlDB, pgdialect.New())
 

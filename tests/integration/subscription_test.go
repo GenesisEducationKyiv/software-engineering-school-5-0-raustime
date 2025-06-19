@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"weatherapi/internal/contracts"
+
 	"weatherapi/internal/db/models"
 
 	"github.com/stretchr/testify/assert"
@@ -37,9 +38,6 @@ func TestSubscriptionFlow(t *testing.T) {
 	}()
 
 	email := "test@example.com"
-
-	// створюємо сервіс з моком
-	//service := subscription_service.NewSubscriptionService(container.DB, &MockMailerService{})
 
 	t.Run("Subscribe", func(t *testing.T) {
 		cleanupTestData()

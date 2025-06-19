@@ -2,8 +2,9 @@
 package mailer_service
 
 import (
-	"fmt"
+	"errors"
 	"sync"
+	"weatherapi/internal/config"
 )
 
 // MockSender implements EmailSenderProvider for testing
@@ -41,7 +42,7 @@ func (m *MockSender) Send(to, subject, body string) error {
 		if errorMsg == "" {
 			errorMsg = "mock sender error"
 		}
-		return fmt.Errorf(errorMsg)
+		return errors.New(errorMsg) // return після вкладеного if
 	}
 
 	// Store for compatibility with existing tests
@@ -149,4 +150,18 @@ func (m *MockSender) Reset() {
 	m.SentEmails = m.SentEmails[:0]
 	m.ShouldFail = false
 	m.ErrorMessage = ""
+}
+
+// Test helper functions
+
+// CreateTestConfig creates a standard test configuration
+func CreateTestConfig() *config.Config {
+	return &config.Config{
+		AppBaseURL:   "https://test.com",
+		Environment:  "test",
+		SMTPHost:     "test-smtp.com",
+		SMTPPort:     587,
+		SMTPUser:     "test@example.com",
+		SMTPPassword: "testpass",
+	}
 }

@@ -28,7 +28,7 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("invalid SMTP_PORT: %w", err)
 	}
 
-	cfg := &Config{
+	return &Config{
 		AppBaseURL:      getEnv("APP_BASE_URL", "http://localhost:8080"),
 		Port:            getEnv("PORT", "8080"),
 		DatabaseURL:     getEnv("DB_URL", ""),
@@ -40,9 +40,28 @@ func Load() (*Config, error) {
 		SMTPPassword:    getEnv("SMTP_PASSWORD", ""),
 		Environment:     strings.ToLower(getEnv("ENVIRONMENT", "development")),
 		BunDebugMode:    getEnv("BUNDEBUG", "0"),
-	}
+	}, nil
 
-	return cfg, nil
+}
+
+func LoadTestConfig() (*Config, error) {
+	smtpPort, err := strconv.Atoi(getEnv("SMTP_PORT", "587"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid SMTP_PORT: %w", err)
+	}
+	return &Config{
+		AppBaseURL:      getEnv("APP_BASE_URL", "http://localhost:8080"),
+		Port:            getEnv("PORT", "8080"),
+		DatabaseURL:     getEnv("DB_URL", ""),
+		DatabaseTestURL: getEnv("TEST_DB_URL", ""),
+		OpenWeatherKey:  getEnv("OPENWEATHER_API_KEY", ""),
+		SMTPHost:        getEnv("SMTP_HOST", ""),
+		SMTPPort:        smtpPort,
+		SMTPUser:        getEnv("SMTP_USER", ""),
+		SMTPPassword:    getEnv("SMTP_PASSWORD", ""),
+		Environment:     strings.ToLower(getEnv("ENVIRONMENT", "test")),
+		BunDebugMode:    getEnv("BUNDEBUG", "0"),
+	}, nil
 }
 
 // IsProduction перевіряє чи додаток працює в продакшен режимі

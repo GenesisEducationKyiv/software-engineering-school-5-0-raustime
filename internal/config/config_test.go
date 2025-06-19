@@ -5,60 +5,6 @@ import (
 	"testing"
 )
 
-func TestConfig_Load(t *testing.T) {
-	tests := []struct {
-		name      string
-		envVars   map[string]string
-		expectErr bool
-	}{
-		{
-			name: "valid config",
-			envVars: map[string]string{
-				"PORT":                "8080",
-				"ENVIRONMENT":         "development",
-				"DB_URL":              "postgres://user:pass@localhost/db",
-				"OPENWEATHER_API_KEY": "abc123",
-			},
-			expectErr: false,
-		},
-		{
-			name: "missing required DB_URL",
-			envVars: map[string]string{
-				"PORT":                "8080",
-				"ENVIRONMENT":         "development",
-				"OPENWEATHER_API_KEY": "abc123",
-			},
-			expectErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Clear and set env vars
-			clearEnvVars()
-			for k, v := range tt.envVars {
-				_ = os.Setenv(k, v)
-			}
-
-			cfg, err := Load()
-			if tt.expectErr {
-				if err != nil {
-					return // expected error
-				}
-				// Validate separately
-				if err := cfg.Validate(); err == nil {
-					t.Error("expected validation error but got none")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Errorf("unexpected error: %v", err)
-			}
-		})
-	}
-}
-
 func TestConfig_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -76,7 +22,7 @@ func TestConfig_Validate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "missing database URL",
+			name: "missing required DB_URL",
 			config: &Config{
 				Port:           "8080",
 				Environment:    "development",
