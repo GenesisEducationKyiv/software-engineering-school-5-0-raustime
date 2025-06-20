@@ -8,94 +8,85 @@ import (
 	"weatherapi/internal/apierrors"
 	"weatherapi/internal/contracts"
 	"weatherapi/internal/db/models"
-	"weatherapi/internal/services/mailer_service"
 
 	"github.com/google/uuid"
-	"github.com/uptrace/bun"
 )
 
-// SubscriptionService defines subscription service interface
-type subscriptionServiceProvider interface {
-	CreateSubscription(ctx context.Context, email, city, frequency string) error
-	ConfirmSubscription(ctx context.Context, token string) error
-	DeleteSubscription(ctx context.Context, token string) error
-	GetConfirmedSubscriptions(ctx context.Context, frequency string) ([]contracts.Subscription, error)
+type subscriptionRepo interface {
+	GetByEmail(ctx context.Context, email string) (models.Subscription, error)
+	GetByToken(ctx context.Context, token string) (models.Subscription, error)
+	GetConfirmed(ctx context.Context, frequency string) ([]models.Subscription, error)
+	Create(ctx context.Context, data models.Subscription) error
+	Update(ctx context.Context, data models.Subscription) error
+	Delete(ctx context.Context, token string) error
 }
 
-type mailSender interface {
-	SendConfirmationEmail(ctx context.Context, to string, token string) error
+type mailerService interface {
+	SendConfirmationEmail(ctx context.Context, email, token string) error
 }
 
-// subscriptionService implements SubscriptionService
 type SubscriptionService struct {
-	db           bun.IDB
-	mailerSender mailer_service.MailerService
+	subRepo       subscriptionRepo
+	mailerService mailerService
 }
 
-// NewSubscriptionService creates a new subscription service
-func NewSubscriptionService(db bun.IDB, mailer mailer_service.MailerService) SubscriptionService {
-	return SubscriptionService{
-		db:           db,
-		mailerSender: mailer,
+func New(sr subscriptionRepo, mailer mailerService) *SubscriptionService {
+	return &SubscriptionService{
+		subRepo:       sr,
+		mailerService: mailer,
 	}
 }
 
-// CreateSubscription creates a new subscription
-func (s SubscriptionService) CreateSubscription(ctx context.Context, email, city, frequency string) error {
-	return s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+func (s SubscriptionService) Create(ctx context.Context, email, city, frequency string) error {
+	if email == "" {
+		return apierrors.ErrInvalidEmail
+	}
+	if _, err := mail.ParseAddress(email); err != nil {
+		return apierrors.ErrInvalidEmail
+	}
 
-		// Валідація email
-		if email == "" {
-			return apierrors.ErrInvalidEmail
-		}
-		if _, err := mail.ParseAddress(email); err != nil {
-			return apierrors.ErrInvalidEmail
-		}
+	// Валідація city
+	if city == "" {
+		return apierrors.ErrInvalidCity
+	}
 
-		// Валідація city
-		if city == "" {
-			return apierrors.ErrInvalidCity
-		}
+	// Валідація frequency
+	validFreq := map[string]bool{"daily": true, "hourly": true}
+	if !validFreq[frequency] {
+		return apierrors.ErrInvalidFrequency
+	}
+	existing, _ := s.subRepo.GetByEmail(ctx, email)
+	// here we can log err if not just not_found
+	if existing != (models.Subscription{}) {
+		return apierrors.ErrAlreadySubscribed
+	}
 
-		// Валідація frequency
-		validFreq := map[string]bool{"daily": true, "hourly": true}
-		if !validFreq[frequency] {
-			return apierrors.ErrInvalidFrequency
-		}
-		var existing models.Subscription
-		err := tx.NewSelect().Model(&existing).Where("email = ?", email).Scan(ctx)
-		if err == nil {
-			return apierrors.ErrAlreadySubscribed
-		}
+	subscription := models.Subscription{
+		Email:     email,
+		City:      city,
+		Frequency: frequency,
+		Token:     uuid.New().String(),
+		CreatedAt: time.Now(),
+	}
 
-		subscription := models.Subscription{
-			Email:     email,
-			City:      city,
-			Frequency: frequency,
-			Token:     uuid.New().String(),
-			CreatedAt: time.Now(),
-		}
+	if err := s.subRepo.Create(ctx, subscription); err != nil {
+		return err
+	}
 
-		if _, err := tx.NewInsert().Model(&subscription).Exec(ctx); err != nil {
-			return err
-		}
+	if err := s.mailerService.SendConfirmationEmail(ctx, email, subscription.Token); err != nil {
+		return apierrors.ErrFailedSendConfirmEmail
+	}
 
-		if err := s.mailerSender.SendConfirmationEmail(ctx, email, subscription.Token); err != nil {
-			return apierrors.ErrFailedSendConfirmEmail
-		}
-
-		return nil
-	})
+	return nil
 }
 
-// ConfirmSubscription confirms a subscription
-func (s SubscriptionService) ConfirmSubscription(ctx context.Context, token string) error {
+func (s SubscriptionService) Confirm(ctx context.Context, token string) error {
 	if _, err := uuid.Parse(token); err != nil {
 		return apierrors.ErrInvalidToken
 	}
 
 	var subscription models.Subscription
-	err := s.db.NewSelect().Model(&subscription).Where("token = ?", token).Scan(ctx)
+	subscription, err := s.subRepo.GetByToken(ctx, token)
 	if err != nil {
 		return apierrors.ErrSubscriptionNotFound
 	}
@@ -103,42 +94,34 @@ func (s SubscriptionService) ConfirmSubscription(ctx context.Context, token stri
 	subscription.Confirmed = true
 	subscription.ConfirmedAt = time.Now()
 
-	_, err = s.db.NewUpdate().Model(&subscription).WherePK().Exec(ctx)
-	return err
+	return s.subRepo.Update(ctx, subscription)
 }
 
-// DeleteSubscription deletes a subscription
-func (s SubscriptionService) DeleteSubscription(ctx context.Context, token string) error {
+func (s SubscriptionService) Delete(ctx context.Context, token string) error {
 	if _, err := uuid.Parse(token); err != nil {
 		return apierrors.ErrInvalidToken
 	}
 
-	res, err := s.db.NewDelete().Model((*models.Subscription)(nil)).Where("token = ?", token).Exec(ctx)
+	err := s.subRepo.Delete(ctx, token)
 	if err != nil {
 		return err
 	}
 
-	count, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if count == 0 {
-		return apierrors.ErrSubscriptionNotFound
-	}
+	// TODO Check if any rows were affected
+	//count, err := res.RowsAffected()
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//if count == 0 {
+	//	return apierrors.ErrSubscriptionNotFound
+	//}
 
 	return nil
 }
 
-// GetConfirmedSubscriptions retrieves confirmed subscriptions by frequency
-func (s SubscriptionService) GetConfirmedSubscriptions(ctx context.Context, frequency string) ([]contracts.Subscription, error) {
-	var modelSubs []models.Subscription
-	err := s.db.NewSelect().
-		Model(&modelSubs).
-		Where("confirmed = TRUE").
-		Where("frequency = ?", frequency).
-		Scan(ctx)
-
+func (s SubscriptionService) GetConfirmed(ctx context.Context, frequency string) ([]contracts.Subscription, error) {
+	modelSubs, err := s.subRepo.GetConfirmed(ctx, frequency)
 	if err != nil {
 		return nil, err
 	}
