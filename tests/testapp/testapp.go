@@ -11,6 +11,7 @@ import (
 	"weatherapi/internal/adapters"
 	"weatherapi/internal/config"
 	"weatherapi/internal/db/migration"
+	"weatherapi/internal/db/repositories"
 	"weatherapi/internal/server"
 	"weatherapi/internal/services/mailer_service"
 	"weatherapi/internal/services/subscription_service"
@@ -28,7 +29,7 @@ type TestContainer struct {
 	DB                  *bun.DB
 	WeatherService      weather_service.WeatherServiceProvider
 	MailerService       mailer_service.MailerService
-	SubscriptionService subscription_service.SubscriptionService
+	SubscriptionService *subscription_service.SubscriptionService
 	Router              http.Handler
 }
 
@@ -63,6 +64,8 @@ func Initialize() *TestContainer {
 		}
 	}
 
+	subscriptionRepo := repositories.NewSubscriptionRepo(db)
+
 	// App dependencies
 	api := adapters.OpenWeatherAdapter{}
 	weatherService := weather_service.NewWeatherService(api)
@@ -70,7 +73,7 @@ func Initialize() *TestContainer {
 	mockSender := mailer_service.NewMockSender()
 	mailerService := mailer_service.NewMailerService(mockSender, cfg.AppBaseURL)
 
-	subscriptionService := subscription_service.NewSubscriptionService(db, mailerService)
+	subscriptionService := subscription_service.New(subscriptionRepo, mailerService)
 	router := server.NewRouter(weatherService, subscriptionService, mailerService)
 
 	return &TestContainer{

@@ -17,6 +17,8 @@ import (
 	"weatherapi/internal/services/subscription_service"
 	"weatherapi/internal/services/weather_service"
 
+	"weatherapi/internal/db/repositories"
+
 	"github.com/joho/godotenv"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
@@ -29,7 +31,7 @@ type Container struct {
 	DB                  *bun.DB
 	WeatherService      weather_service.WeatherService
 	MailerService       mailer_service.MailerService
-	SubscriptionService subscription_service.SubscriptionService
+	SubscriptionService *subscription_service.SubscriptionService
 	JobScheduler        jobs.Scheduler
 	Router              http.Handler
 }
@@ -59,12 +61,13 @@ func BuildContainer() (*Container, error) {
 		return nil, fmt.Errorf("migrations failed: %w", err)
 	}
 
+	subscriptionRepo := repositories.NewSubscriptionRepo(db)
 	// Init Weather API adapter
 	api := adapters.OpenWeatherAdapter{}
 	weatherService := weather_service.NewWeatherService(api)
 	mailerService := mailer_service.NewMailerService(mailer_service.NewSMTPSender(cfg.SMTPUser, cfg.SMTPPassword, cfg.SMTPHost, strconv.Itoa(cfg.SMTPPort)), cfg.AppBaseURL)
 
-	subscriptionService := subscription_service.NewSubscriptionService(db, mailerService)
+	subscriptionService := subscription_service.New(subscriptionRepo, mailerService)
 	jobScheduler := jobs.NewScheduler(subscriptionService, mailerService, weatherService)
 	router := server.NewRouter(weatherService, subscriptionService, mailerService)
 

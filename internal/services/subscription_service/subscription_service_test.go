@@ -3,13 +3,14 @@ package subscription_service
 import (
 	"context"
 	"errors"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 	"weatherapi/internal/apierrors"
 	"weatherapi/internal/db/models"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 type mailerServiceMock struct {

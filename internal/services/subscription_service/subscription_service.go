@@ -107,16 +107,6 @@ func (s SubscriptionService) Delete(ctx context.Context, token string) error {
 		return err
 	}
 
-	// TODO Check if any rows were affected
-	//count, err := res.RowsAffected()
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//if count == 0 {
-	//	return apierrors.ErrSubscriptionNotFound
-	//}
-
 	return nil
 }
 

@@ -14,11 +14,11 @@ import (
 
 // SubscriptionHandler handles subscription-related requests
 type SubscriptionHandler struct {
-	subscriptionService subscription_service.SubscriptionService
+	subscriptionService *subscription_service.SubscriptionService
 }
 
 // NewSubscriptionHandler creates a new subscription handler
-func NewSubscriptionHandler(subscriptionService subscription_service.SubscriptionService) SubscriptionHandler {
+func NewSubscriptionHandler(subscriptionService *subscription_service.SubscriptionService) SubscriptionHandler {
 	return SubscriptionHandler{
 		subscriptionService: subscriptionService,
 	}
@@ -37,7 +37,7 @@ func (h SubscriptionHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.subscriptionService.CreateSubscription(r.Context(), req.Email, req.City, req.Frequency)
+	err := h.subscriptionService.Create(r.Context(), req.Email, req.City, req.Frequency)
 	if err != nil {
 		switch err {
 		case apierrors.ErrAlreadySubscribed:
@@ -59,7 +59,7 @@ func (h *SubscriptionHandler) Confirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.subscriptionService.ConfirmSubscription(r.Context(), token); err != nil {
+	if err := h.subscriptionService.Confirm(r.Context(), token); err != nil {
 		switch err {
 		case apierrors.ErrSubscriptionNotFound:
 			http.Error(w, "Subscription not found", http.StatusNotFound)
@@ -82,7 +82,7 @@ func (h *SubscriptionHandler) Unsubscribe(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := h.subscriptionService.DeleteSubscription(r.Context(), token); err != nil {
+	if err := h.subscriptionService.Delete(r.Context(), token); err != nil {
 		switch err {
 		case apierrors.ErrSubscriptionNotFound:
 			http.Error(w, "Subscription not found", http.StatusNotFound)
