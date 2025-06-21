@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"weatherapi/internal/apierrors"
+	api_errors "weatherapi/internal/apierrors"
 	"weatherapi/internal/contracts"
 )
 
@@ -34,14 +34,14 @@ func NewWeatherService(api WeatherAPIProvider) WeatherService {
 func (s WeatherService) GetWeather(ctx context.Context, city string) (contracts.WeatherData, error) {
 	// Validate input
 	if city == "" {
-		return contracts.WeatherData{}, apierrors.ErrInvalidCity
+		return contracts.WeatherData{}, api_errors.ErrInvalidCity
 	}
 
 	// Pass context to API call for proper cancellation/timeout handling
 	data, err := s.weatherAPI.FetchWeather(ctx, city)
 	if err != nil {
-		if errors.Is(err, apierrors.ErrCityNotFound) {
-			return contracts.WeatherData{}, apierrors.ErrCityNotFound
+		if errors.Is(err, api_errors.ErrCityNotFound) {
+			return contracts.WeatherData{}, api_errors.ErrCityNotFound
 		}
 		return contracts.WeatherData{}, err
 	}

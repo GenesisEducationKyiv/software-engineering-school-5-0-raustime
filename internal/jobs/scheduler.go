@@ -15,7 +15,7 @@ import (
 
 // subscriptionService defines required methods from SubscriptionService
 type subscriptionService interface {
-	GetConfirmedSubscriptions(ctx context.Context, frequency string) ([]contracts.Subscription, error)
+	GetConfirmed(ctx context.Context, frequency string) ([]contracts.Subscription, error)
 }
 
 // mailerService defines required methods from MailerService
@@ -45,7 +45,7 @@ type Scheduler struct {
 
 // NewScheduler creates a new job scheduler
 func NewScheduler(
-	subscriptionService subscription_service.SubscriptionService,
+	subscriptionService *subscription_service.SubscriptionService,
 	mailerService mailer_service.MailerService,
 	weatherService weather_service.WeatherService,
 ) Scheduler {
@@ -98,7 +98,7 @@ func (s Scheduler) sendWeatherUpdates(frequency string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	subscriptions, err := s.subscriptionService.GetConfirmedSubscriptions(ctx, frequency)
+	subscriptions, err := s.subscriptionService.GetConfirmed(ctx, frequency)
 	if err != nil {
 		log.Printf("Failed to fetch %s subscriptions: %v", frequency, err)
 		return

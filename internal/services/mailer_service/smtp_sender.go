@@ -13,7 +13,7 @@ type SMTPSender struct {
 	Port     string
 }
 
-func NewSMTPSender(from, pass, host, port string) *SMTPSender {
+func NewSMTPSender(from, pass, host string, port string) *SMTPSender {
 	return &SMTPSender{
 		From:     from,
 		Password: pass,

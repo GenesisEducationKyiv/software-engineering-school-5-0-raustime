@@ -25,7 +25,7 @@ type App struct {
 	db                  *bun.DB
 	httpServer          *http.Server
 	weatherService      weather_service.WeatherService
-	subscriptionService subscription_service.SubscriptionService
+	subscriptionService *subscription_service.SubscriptionService
 	mailerService       mailer_service.MailerService
 	jobScheduler        jobs.Scheduler
 }

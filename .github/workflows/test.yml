@@ -1,0 +1,75 @@
+name: Run All Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  COMPOSE_PROJECT_NAME: weatherapi
+  DOCKER_BUILDKIT: 1
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker:24.0.5-dind
+        options: --privileged
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Compose
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create .env file
+        run: cp .env.ci .env
+
+      - name: Start Postgres
+        run: docker compose up -d db
+
+      - name: Run Unit Tests
+        run: docker compose run --rm test-runner-unit
+
+      - name: Clean up
+        run: docker compose down -v
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker:24.0.5-dind
+        options: --privileged
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Compose
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create .env file
+        run: cp .env.ci .env
+
+      - name: Start Postgres
+        run: docker compose up -d db
+
+      - name: Wait for DB
+        run: sleep 5
+
+      - name: Create test DB if missing
+        run: |
+          docker exec "$(docker compose ps -q db)" psql -U postgres -d postgres <<'SQL'
+          SELECT 'CREATE DATABASE weatherdb_test'
+          WHERE NOT EXISTS (
+            SELECT FROM pg_database WHERE datname = 'weatherdb_test'
+          )\gexec
+          SQL
+
+      - name: Run Integration Tests
+        run: docker compose run --rm test-runner-integration
+
+      - name: Clean up
+        run: docker compose down -v
