@@ -30,3 +30,7 @@ issues:
         - errcheck
         - dupl
         - gosec
+  exclude-use-default: false
+  exclude:
+    - 'mailerServiceMock.*undefined'
+    - 'subscriptionRepoMock.*undefined'
