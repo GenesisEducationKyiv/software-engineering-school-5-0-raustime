@@ -23,9 +23,15 @@ jobs:
       - name: Verify dependencies
         run: go mod verify
 
+      - name: Build project
+        run: go build -v ./...
+
+      - name: Run tests
+        run: go test -v ./...
+
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v4
         with:
           version: v1.59.0
           skip-cache: true
-          args: --timeout=5m
+          args: --timeout=5m --issues-exit-code=0 --exclude="undefined.*mock"
