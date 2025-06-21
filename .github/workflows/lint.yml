@@ -17,11 +17,15 @@ jobs:
         with:
           go-version: "1.23"
 
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Verify dependencies
+        run: go mod verify
+
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v4
         with:
           version: v1.59.0
-          skip-cache: true # <-- вимикаємо кешування
-
-      - name: Run golangci-lint
-        run: golangci-lint run
+          skip-cache: true
+          args: --timeout=5m
