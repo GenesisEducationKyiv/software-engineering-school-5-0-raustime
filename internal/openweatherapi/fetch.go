@@ -1,12 +1,14 @@
 package openweatherapi
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"weatherapi/internal/apierrors"
+	"weatherapi/internal/contracts"
 )
 
 type WeatherResponse struct {
@@ -19,13 +21,11 @@ type WeatherResponse struct {
 	} `json:"main"`
 }
 
-type WeatherData struct {
-	Description string
-	Temperature float64
-	Humidity    float64
+func FetchWeather(city string) (*contracts.WeatherData, error) {
+	return FetchWeatherWithContext(context.Background(), city)
 }
 
-func FetchWeather(city string) (*WeatherData, error) {
+func FetchWeatherWithContext(ctx context.Context, city string) (*contracts.WeatherData, error) {
 	apiKey := os.Getenv("OPENWEATHER_API_KEY")
 	if apiKey == "" {
 		return nil, fmt.Errorf("OPENWEATHER_API_KEY is not set")
@@ -33,7 +33,13 @@ func FetchWeather(city string) (*WeatherData, error) {
 
 	url := fmt.Sprintf("https://api.openweathermap.org/data/2.5/weather?q=%s&appid=%s&units=metric", city, apiKey)
 
-	resp, err := http.Get(url)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get weather: %w", err)
 	}
@@ -69,7 +75,7 @@ func FetchWeather(city string) (*WeatherData, error) {
 		return nil, fmt.Errorf("no weather data found")
 	}
 
-	data := &WeatherData{
+	data := &contracts.WeatherData{
 		Description: weatherResp.Weather[0].Description,
 		Temperature: weatherResp.Main.Temp,
 		Humidity:    weatherResp.Main.Humidity,

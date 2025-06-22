@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"weatherapi/internal/adapters"
+	"weatherapi/internal/chain"
 	"weatherapi/internal/config"
 	"weatherapi/internal/db/migration"
 	"weatherapi/internal/db/repositories"
@@ -66,15 +67,111 @@ func Initialize() *TestContainer {
 
 	subscriptionRepo := repositories.NewSubscriptionRepo(db)
 
-	// App dependencies
-	api := adapters.OpenWeatherAdapter{}
-	weatherService := weather_service.NewWeatherService(api)
+	// Setup weather service with chain of responsibility
+	weatherService := setupWeatherService()
 
 	mockSender := mailer_service.NewMockSender()
 	mailerService := mailer_service.NewMailerService(mockSender, cfg.AppBaseURL)
 
 	subscriptionService := subscription_service.New(subscriptionRepo, mailerService)
-	router := server.NewRouter(weatherService, subscriptionService, mailerService)
+	router := server.NewRouter(weatherService.(weather_service.WeatherService), subscriptionService, mailerService)
+
+	return &TestContainer{
+		Config:              cfg,
+		DB:                  db,
+		WeatherService:      weatherService,
+		MailerService:       mailerService,
+		SubscriptionService: subscriptionService,
+		Router:              router,
+	}
+}
+
+// setupWeatherService creates a weather service with chain of responsibility
+func setupWeatherService() weather_service.WeatherServiceProvider {
+	// Create adapters
+	openWeatherAdapter := &adapters.OpenWeatherAdapter{}
+	weatherAPIAdapter := &adapters.WeatherAPIAdapter{}
+
+	// Create handlers for the chain
+	openWeatherHandler := chain.NewBaseWeatherHandler(openWeatherAdapter, "openweathermap.org")
+	weatherAPIHandler := chain.NewBaseWeatherHandler(weatherAPIAdapter, "weatherapi.com")
+
+	// Set up the chain: OpenWeather -> WeatherAPI
+	// In tests, we might want to use a simpler chain or mock
+	openWeatherHandler.SetNext(weatherAPIHandler)
+
+	// Create and configure the chain
+	weatherChain := chain.NewWeatherChain()
+	weatherChain.SetFirstHandler(openWeatherHandler)
+
+	// Create weather service with the chain
+	return weather_service.NewWeatherService(weatherChain)
+}
+
+// Alternative setup for tests that need more control
+func setupWeatherServiceForTests(useOnlyPrimary bool) weather_service.WeatherServiceProvider {
+	// Create adapters
+	openWeatherAdapter := &adapters.OpenWeatherAdapter{}
+
+	// Create handler for the chain
+	openWeatherHandler := chain.NewBaseWeatherHandler(openWeatherAdapter, "openweathermap.org")
+
+	if !useOnlyPrimary {
+		// Add secondary provider for full chain
+		weatherAPIAdapter := &adapters.WeatherAPIAdapter{}
+		weatherAPIHandler := chain.NewBaseWeatherHandler(weatherAPIAdapter, "weatherapi.com")
+		openWeatherHandler.SetNext(weatherAPIHandler)
+	}
+
+	// Create and configure the chain
+	weatherChain := chain.NewWeatherChain()
+	weatherChain.SetFirstHandler(openWeatherHandler)
+
+	// Create weather service with the chain
+	return weather_service.NewWeatherService(weatherChain)
+}
+
+// InitializeWithSingleProvider creates a test container with only one weather provider
+// Useful for tests that need to control which provider is used
+func InitializeWithSingleProvider() *TestContainer {
+	_ = godotenv.Load(".env.test")
+
+	cfg, err := config.LoadTestConfig()
+	if err != nil {
+		log.Fatalf("❌ Failed to load config for test: %v", err)
+	}
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("❌ Invalid test config: %v", err)
+	}
+
+	db, err := initDatabase(cfg)
+	if err != nil {
+		log.Fatalf("❌ Failed to init test DB: %v", err)
+	}
+
+	// Skip migrations if SKIP_MIGRATIONS is set
+	if os.Getenv("SKIP_MIGRATIONS") == "true" {
+		log.Println("⚠️ Skipping migrations as requested")
+	} else {
+		migrationsDir := resolveMigrationsPath()
+		log.Printf("📁 Using migrations from: %s", migrationsDir)
+
+		mr := migration.NewRunner(db, migrationsDir)
+		if err := mr.RunMigrations(context.Background()); err != nil {
+			log.Fatalf("❌ Failed to run test migrations: %v", err)
+		}
+	}
+
+	subscriptionRepo := repositories.NewSubscriptionRepo(db)
+
+	// Setup weather service with single provider for testing
+	weatherService := setupWeatherServiceForTests(true)
+
+	mockSender := mailer_service.NewMockSender()
+	mailerService := mailer_service.NewMailerService(mockSender, cfg.AppBaseURL)
+
+	subscriptionService := subscription_service.New(subscriptionRepo, mailerService)
+	router := server.NewRouter(weatherService.(weather_service.WeatherService), subscriptionService, mailerService)
 
 	return &TestContainer{
 		Config:              cfg,
@@ -87,7 +184,6 @@ func Initialize() *TestContainer {
 }
 
 func initDatabase(cfg *config.Config) (*bun.DB, error) {
-
 	sqlDB := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(cfg.GetDatabaseURL())))
 	log.Println("💡 DB_URL =", cfg.GetDatabaseURL())
 	log.Println(cfg.Environment)

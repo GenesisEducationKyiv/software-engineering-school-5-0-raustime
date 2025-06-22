@@ -7,23 +7,22 @@ import (
 	"net/http"
 	"strconv"
 
-	"weatherapi/internal/config"
-	"weatherapi/internal/db/migration"
-	"weatherapi/internal/jobs"
-
-	"weatherapi/internal/adapters"
-	"weatherapi/internal/server"
-	"weatherapi/internal/services/mailer_service"
-	"weatherapi/internal/services/subscription_service"
-	"weatherapi/internal/services/weather_service"
-
-	"weatherapi/internal/db/repositories"
-
 	"github.com/joho/godotenv"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
 	_ "github.com/uptrace/bun/driver/pgdriver"
 	"github.com/uptrace/bun/extra/bundebug"
+
+	"weatherapi/internal/adapters"
+	"weatherapi/internal/chain"
+	"weatherapi/internal/config"
+	"weatherapi/internal/db/migration"
+	"weatherapi/internal/db/repositories"
+	"weatherapi/internal/jobs"
+	"weatherapi/internal/server"
+	"weatherapi/internal/services/mailer_service"
+	"weatherapi/internal/services/subscription_service"
+	"weatherapi/internal/services/weather_service"
 )
 
 type Container struct {
@@ -63,8 +62,20 @@ func BuildContainer() (*Container, error) {
 
 	subscriptionRepo := repositories.NewSubscriptionRepo(db)
 	// Init Weather API adapter
-	api := adapters.OpenWeatherAdapter{}
-	weatherService := weather_service.NewWeatherService(api)
+	//api := adapters.OpenWeatherAdapter{}
+	openWeatherAdapter := &adapters.OpenWeatherAdapter{}
+	weatherAPIAdapter := &adapters.WeatherAPIAdapter{}
+
+	openWeatherHandler := chain.NewBaseWeatherHandler(openWeatherAdapter, "openweathermap.org")
+	weatherAPIHandler := chain.NewBaseWeatherHandler(weatherAPIAdapter, "weatherapi.com")
+
+	// Set up the chain: OpenWeather -> WeatherAPI
+	openWeatherHandler.SetNext(weatherAPIHandler)
+
+	weatherChain := chain.NewWeatherChain()
+	weatherChain.SetFirstHandler(openWeatherHandler)
+
+	weatherService := weather_service.NewWeatherService(weatherChain)
 	mailerService := mailer_service.NewMailerService(mailer_service.NewSMTPSender(cfg.SMTPUser, cfg.SMTPPassword, cfg.SMTPHost, strconv.Itoa(cfg.SMTPPort)), cfg.AppBaseURL)
 
 	subscriptionService := subscription_service.New(subscriptionRepo, mailerService)
