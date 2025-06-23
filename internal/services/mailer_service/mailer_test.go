@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"weatherapi/internal/config"
 	"weatherapi/internal/contracts"
 	"weatherapi/internal/services/mailer_service"
 
@@ -15,22 +14,16 @@ import (
 )
 
 var (
-	cfg         *config.Config
 	tmpDir      string
 	mockSender  *mailer_service.MockSender
 	service     mailer_service.MailerService
 	weatherData contracts.WeatherData
+	testBaseURL = "https://test-api.example.com"
 )
 
 func TestMain(m *testing.M) {
-	// Налаштування спільних змінних для всіх тестів
-	var err error
-	cfg, err = config.LoadTestConfig()
-	if err != nil {
-		panic(fmt.Sprintf("Failed to load test config: %v", err))
-	}
-
 	// Створюємо тимчасову директорію для шаблонів
+	var err error
 	tmpDir, err = os.MkdirTemp("", "mailer_test_templates")
 	if err != nil {
 		panic(fmt.Sprintf("Failed to create temp dir: %v", err))
@@ -44,8 +37,8 @@ func TestMain(m *testing.M) {
 	// Ініціалізуємо mock sender
 	mockSender = mailer_service.NewMockSender()
 
-	// Створюємо сервіс
-	service = mailer_service.NewMailerService(mockSender, cfg.AppBaseURL)
+	// Створюємо сервіс з тестовим base URL
+	service = mailer_service.NewMailerService(mockSender, testBaseURL)
 	service.SetTemplateDir(tmpDir)
 
 	// Налаштовуємо тестові дані погоди
@@ -97,20 +90,8 @@ func TestSendConfirmationEmail(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "user@example.com", mockSender.LastTo)
 	assert.Equal(t, "Confirm your subscription", mockSender.LastSubject)
-	assert.Contains(t, mockSender.LastBody, fmt.Sprintf("%s/api/confirm/abc123", cfg.AppBaseURL))
+	assert.Contains(t, mockSender.LastBody, fmt.Sprintf("%s/api/confirm/abc123", testBaseURL))
 }
-
-func TestSendConfirmationEmailWithTestSMTPUser(t *testing.T) {
-	resetMockSender()
-
-	err := service.SendConfirmationEmail(context.Background(), cfg.SMTPUser, "abc123")
-
-	assert.NoError(t, err)
-	assert.Equal(t, cfg.SMTPUser, mockSender.LastTo)
-	assert.Equal(t, "Confirm your subscription", mockSender.LastSubject)
-	assert.Contains(t, mockSender.LastBody, fmt.Sprintf("%s/api/confirm/abc123", cfg.AppBaseURL))
-}
-
 func TestSendWeatherEmail(t *testing.T) {
 	resetMockSender()
 
@@ -121,20 +102,21 @@ func TestSendWeatherEmail(t *testing.T) {
 	assert.Contains(t, mockSender.LastSubject, "Kyiv")
 	assert.Contains(t, mockSender.LastBody, weatherData.Description)
 	assert.Contains(t, mockSender.LastBody, "21.5")
-	assert.Contains(t, mockSender.LastBody, fmt.Sprintf("%s/api/unsubscribe/xyz789", cfg.AppBaseURL))
+	assert.Contains(t, mockSender.LastBody, fmt.Sprintf("%s/api/unsubscribe/xyz789", testBaseURL))
 }
 
-func TestSendWeatherEmailWithTestSMTPUser(t *testing.T) {
+func TestSendWeatherEmailWithTestUser(t *testing.T) {
 	resetMockSender()
+	testEmail := "test@example.com"
 
-	err := service.SendWeatherEmail(context.Background(), cfg.SMTPUser, "Kyiv", weatherData, "xyz789")
+	err := service.SendWeatherEmail(context.Background(), testEmail, "Kyiv", weatherData, "xyz789")
 
 	assert.NoError(t, err)
-	assert.Equal(t, cfg.SMTPUser, mockSender.LastTo)
+	assert.Equal(t, testEmail, mockSender.LastTo)
 	assert.Contains(t, mockSender.LastSubject, "Kyiv")
 	assert.Contains(t, mockSender.LastBody, weatherData.Description)
 	assert.Contains(t, mockSender.LastBody, "21.5")
-	assert.Contains(t, mockSender.LastBody, fmt.Sprintf("%s/api/unsubscribe/xyz789", cfg.AppBaseURL))
+	assert.Contains(t, mockSender.LastBody, fmt.Sprintf("%s/api/unsubscribe/xyz789", testBaseURL))
 }
 
 func TestInvalidTemplateHandling(t *testing.T) {
@@ -146,7 +128,7 @@ func TestInvalidTemplateHandling(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Створюємо окремий сервіс з некоректним шаблоном
-	invalidService := mailer_service.NewMailerService(mockSender, cfg.AppBaseURL)
+	invalidService := mailer_service.NewMailerService(mockSender, testBaseURL)
 	invalidService.SetTemplateDir(invalidTmpDir)
 
 	err = invalidService.SendConfirmationEmail(context.Background(), "user@example.com", "badtoken")
