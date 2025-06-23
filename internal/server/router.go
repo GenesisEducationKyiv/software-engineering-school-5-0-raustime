@@ -18,7 +18,7 @@ type Router struct {
 
 func NewRouter(
 	weatherService weather_service.WeatherService,
-	subscriptionService *subscription_service.SubscriptionService,
+	subscriptionService subscription_service.SubscriptionService,
 	mailerService mailer_service.MailerService,
 ) http.Handler {
 	router := &Router{

@@ -30,8 +30,8 @@ type SubscriptionService struct {
 	mailerService mailerService
 }
 
-func New(sr subscriptionRepo, mailer mailerService) *SubscriptionService {
-	return &SubscriptionService{
+func New(sr subscriptionRepo, mailer mailerService) SubscriptionService {
+	return SubscriptionService{
 		subRepo:       sr,
 		mailerService: mailer,
 	}

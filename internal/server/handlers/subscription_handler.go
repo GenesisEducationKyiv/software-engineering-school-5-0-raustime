@@ -14,11 +14,11 @@ import (
 
 // SubscriptionHandler handles subscription-related requests
 type SubscriptionHandler struct {
-	subscriptionService *subscription_service.SubscriptionService
+	subscriptionService subscription_service.SubscriptionService
 }
 
 // NewSubscriptionHandler creates a new subscription handler
-func NewSubscriptionHandler(subscriptionService *subscription_service.SubscriptionService) SubscriptionHandler {
+func NewSubscriptionHandler(subscriptionService subscription_service.SubscriptionService) SubscriptionHandler {
 	return SubscriptionHandler{
 		subscriptionService: subscriptionService,
 	}

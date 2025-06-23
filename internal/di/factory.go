@@ -30,34 +30,34 @@ type Container struct {
 	DB                  *bun.DB
 	WeatherService      weather_service.WeatherService
 	MailerService       mailer_service.MailerService
-	SubscriptionService *subscription_service.SubscriptionService
+	SubscriptionService subscription_service.SubscriptionService
 	JobScheduler        jobs.Scheduler
 	Router              http.Handler
 }
 
 // BuildContainer створює всі залежності і повертає контейнер
-func BuildContainer() (*Container, error) {
+func BuildContainer() (Container, error) {
 	_ = godotenv.Load()
 
 	// Load config
 	cfg, err := config.Load()
 	if err != nil {
-		return nil, fmt.Errorf("config load failed: %w", err)
+		return Container{}, fmt.Errorf("config load failed: %w", err)
 	}
 	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("config validation failed: %w", err)
+		return Container{}, fmt.Errorf("config validation failed: %w", err)
 	}
 
 	// Init DB
 	db, err := initDatabase(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("database init failed: %w", err)
+		return Container{}, fmt.Errorf("database init failed: %w", err)
 	}
 
 	// Run migrations
 	mr := migration.NewRunner(db, "migrations")
 	if err := mr.RunMigrations(context.Background()); err != nil {
-		return nil, fmt.Errorf("migrations failed: %w", err)
+		return Container{}, fmt.Errorf("migrations failed: %w", err)
 	}
 
 	subscriptionRepo := repositories.NewSubscriptionRepo(db)
@@ -82,7 +82,7 @@ func BuildContainer() (*Container, error) {
 	jobScheduler := jobs.NewScheduler(subscriptionService, mailerService, weatherService)
 	router := server.NewRouter(weatherService, subscriptionService, mailerService)
 
-	return &Container{
+	return Container{
 		Config:              cfg,
 		DB:                  db,
 		WeatherService:      weatherService,

@@ -30,7 +30,7 @@ type TestContainer struct {
 	DB                  *bun.DB
 	WeatherService      weather_service.WeatherServiceProvider
 	MailerService       mailer_service.MailerService
-	SubscriptionService *subscription_service.SubscriptionService
+	SubscriptionService subscription_service.SubscriptionService
 	Router              http.Handler
 }
 

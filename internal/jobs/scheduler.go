@@ -45,7 +45,7 @@ type Scheduler struct {
 
 // NewScheduler creates a new job scheduler
 func NewScheduler(
-	subscriptionService *subscription_service.SubscriptionService,
+	subscriptionService subscription_service.SubscriptionService,
 	mailerService mailer_service.MailerService,
 	weatherService weather_service.WeatherService,
 ) Scheduler {
