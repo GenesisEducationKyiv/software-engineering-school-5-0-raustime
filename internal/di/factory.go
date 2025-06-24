@@ -7,21 +7,22 @@ import (
 	"net/http"
 	"strconv"
 
-	"weatherapi/internal/config"
-	"weatherapi/internal/db/migration"
-	"weatherapi/internal/jobs"
-
-	"weatherapi/internal/adapters"
-	"weatherapi/internal/server"
-	"weatherapi/internal/services/mailer_service"
-	"weatherapi/internal/services/subscription_service"
-	"weatherapi/internal/services/weather_service"
-
 	"github.com/joho/godotenv"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
 	_ "github.com/uptrace/bun/driver/pgdriver"
 	"github.com/uptrace/bun/extra/bundebug"
+
+	"weatherapi/internal/adapters"
+	"weatherapi/internal/chain"
+	"weatherapi/internal/config"
+	"weatherapi/internal/db/migration"
+	"weatherapi/internal/db/repositories"
+	"weatherapi/internal/jobs"
+	"weatherapi/internal/server"
+	"weatherapi/internal/services/mailer_service"
+	"weatherapi/internal/services/subscription_service"
+	"weatherapi/internal/services/weather_service"
 )
 
 type Container struct {
@@ -35,49 +36,53 @@ type Container struct {
 }
 
 // BuildContainer створює всі залежності і повертає контейнер
-func BuildContainer() (*Container, error) {
+func BuildContainer() (Container, error) {
 	_ = godotenv.Load()
 
 	// Load config
 	cfg, err := config.Load()
 	if err != nil {
-		return nil, fmt.Errorf("config load failed: %w", err)
+		return Container{}, fmt.Errorf("config load failed: %w", err)
 	}
 	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("config validation failed: %w", err)
+		return Container{}, fmt.Errorf("config validation failed: %w", err)
 	}
 
 	// Init DB
 	db, err := initDatabase(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("database init failed: %w", err)
+		return Container{}, fmt.Errorf("database init failed: %w", err)
 	}
 
 	// Run migrations
 	mr := migration.NewRunner(db, "migrations")
 	if err := mr.RunMigrations(context.Background()); err != nil {
-		return nil, fmt.Errorf("migrations failed: %w", err)
+		return Container{}, fmt.Errorf("migrations failed: %w", err)
 	}
 
+	subscriptionRepo := repositories.NewSubscriptionRepo(db)
 	// Init Weather API adapter
-	api := adapters.OpenWeatherAdapter{}
-	weatherService := weather_service.NewWeatherService(api)
+	//api := adapters.OpenWeatherAdapter{}
+	openWeatherAdapter := &adapters.OpenWeatherAdapter{}
+	weatherAPIAdapter := &adapters.WeatherAPIAdapter{}
 
-	// Init Mailer
+	openWeatherHandler := chain.NewBaseWeatherHandler(openWeatherAdapter, "openweathermap.org")
+	weatherAPIHandler := chain.NewBaseWeatherHandler(weatherAPIAdapter, "weatherapi.com")
 
-	emailSender := mailer_service.NewSMTPSender(
-		cfg.SMTPUser,
-		cfg.SMTPPassword,
-		cfg.SMTPHost,
-		strconv.Itoa(cfg.SMTPPort),
-	)
-	mailerService := mailer_service.NewMailerService(emailSender, cfg.AppBaseURL)
+	// Set up the chain: OpenWeather -> WeatherAPI
+	openWeatherHandler.SetNext(weatherAPIHandler)
 
-	subscriptionService := subscription_service.NewSubscriptionService(db, mailerService)
+	weatherChain := chain.NewWeatherChain()
+	weatherChain.SetFirstHandler(openWeatherHandler)
+
+	weatherService := weather_service.NewWeatherService(weatherChain)
+	mailerService := mailer_service.NewMailerService(mailer_service.NewSMTPSender(cfg.SMTPUser, cfg.SMTPPassword, cfg.SMTPHost, strconv.Itoa(cfg.SMTPPort)), cfg.AppBaseURL)
+
+	subscriptionService := subscription_service.New(subscriptionRepo, mailerService)
 	jobScheduler := jobs.NewScheduler(subscriptionService, mailerService, weatherService)
 	router := server.NewRouter(weatherService, subscriptionService, mailerService)
 
-	return &Container{
+	return Container{
 		Config:              cfg,
 		DB:                  db,
 		WeatherService:      weatherService,

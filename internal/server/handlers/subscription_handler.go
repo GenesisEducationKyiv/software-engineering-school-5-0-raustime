@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/mail"
 	"strings"
 
 	"weatherapi/internal/apierrors"
@@ -36,7 +37,7 @@ func (h SubscriptionHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.subscriptionService.CreateSubscription(r.Context(), req.Email, req.City, req.Frequency)
+	err := h.subscriptionService.Create(r.Context(), req.Email, req.City, req.Frequency)
 	if err != nil {
 		switch err {
 		case apierrors.ErrAlreadySubscribed:
@@ -58,7 +59,7 @@ func (h *SubscriptionHandler) Confirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.subscriptionService.ConfirmSubscription(r.Context(), token); err != nil {
+	if err := h.subscriptionService.Confirm(r.Context(), token); err != nil {
 		switch err {
 		case apierrors.ErrSubscriptionNotFound:
 			http.Error(w, "Subscription not found", http.StatusNotFound)
@@ -81,7 +82,7 @@ func (h *SubscriptionHandler) Unsubscribe(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := h.subscriptionService.DeleteSubscription(r.Context(), token); err != nil {
+	if err := h.subscriptionService.Delete(r.Context(), token); err != nil {
 		switch err {
 		case apierrors.ErrSubscriptionNotFound:
 			http.Error(w, "Subscription not found", http.StatusNotFound)
@@ -100,6 +101,9 @@ func (h *SubscriptionHandler) validateSubscriptionRequest(req contracts.Subscrip
 	var errs []string
 
 	if req.Email == "" {
+		errs = append(errs, apierrors.ErrInvalidEmail.Error())
+	} else if _, err := mail.ParseAddress(req.Email); err != nil {
+
 		errs = append(errs, apierrors.ErrInvalidEmail.Error())
 	}
 	if req.City == "" {

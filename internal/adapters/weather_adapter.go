@@ -5,14 +5,13 @@ import (
 	"errors"
 	"weatherapi/internal/apierrors"
 	"weatherapi/internal/contracts"
-	"weatherapi/internal/openweatherapi"
+	"weatherapi/internal/weatherapi"
 )
 
-type OpenWeatherAdapter struct{}
+type WeatherAPIAdapter struct{}
 
-func (a OpenWeatherAdapter) FetchWeather(ctx context.Context, city string) (contracts.WeatherData, error) {
-	// Use the new context-aware function
-	data, err := openweatherapi.FetchWeatherWithContext(ctx, city)
+func (a WeatherAPIAdapter) FetchWeather(ctx context.Context, city string) (contracts.WeatherData, error) {
+	data, err := weatherapi.FetchWeatherWithContext(ctx, city)
 	if err != nil {
 		if errors.Is(err, apierrors.ErrCityNotFound) {
 			return contracts.WeatherData{}, apierrors.ErrCityNotFound
