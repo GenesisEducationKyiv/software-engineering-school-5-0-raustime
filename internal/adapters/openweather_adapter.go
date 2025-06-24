@@ -5,7 +5,7 @@ import (
 	"errors"
 	"weatherapi/internal/apierrors"
 	"weatherapi/internal/contracts"
-	"weatherapi/internal/openweatherapi"
+	"weatherapi/internal/extapi/openweatherapi"
 )
 
 type OpenWeatherAdapter struct{}
@@ -20,8 +20,8 @@ func (a OpenWeatherAdapter) FetchWeather(ctx context.Context, city string) (cont
 		return contracts.WeatherData{}, err
 	}
 	return contracts.WeatherData{
-		Temperature: data.Temperature,
-		Humidity:    data.Humidity,
-		Description: data.Description,
+		Temperature: data.Main.Temp,
+		Humidity:    data.Main.Humidity,
+		Description: data.Weather[0].Description,
 	}, nil
 }

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"weatherapi/internal/apierrors"
-	"weatherapi/internal/contracts"
 )
 
 type WeatherResponse struct {
@@ -21,27 +20,27 @@ type WeatherResponse struct {
 	} `json:"main"`
 }
 
-func FetchWeather(city string) (*contracts.WeatherData, error) {
+func FetchWeather(city string) (WeatherResponse, error) {
 	return FetchWeatherWithContext(context.Background(), city)
 }
 
-func FetchWeatherWithContext(ctx context.Context, city string) (*contracts.WeatherData, error) {
+func FetchWeatherWithContext(ctx context.Context, city string) (WeatherResponse, error) {
 	apiKey := os.Getenv("OPENWEATHER_API_KEY")
 	if apiKey == "" {
-		return nil, fmt.Errorf("OPENWEATHER_API_KEY is not set")
+		return WeatherResponse{}, fmt.Errorf("OPENWEATHER_API_KEY is not set")
 	}
 
 	url := fmt.Sprintf("https://api.openweathermap.org/data/2.5/weather?q=%s&appid=%s&units=metric", city, apiKey)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return WeatherResponse{}, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get weather: %w", err)
+		return WeatherResponse{}, fmt.Errorf("failed to get weather: %w", err)
 	}
 	defer func() {
 		if cerr := resp.Body.Close(); cerr != nil {
@@ -57,29 +56,29 @@ func FetchWeatherWithContext(ctx context.Context, city string) (*contracts.Weath
 		}
 		_ = json.NewDecoder(resp.Body).Decode(&errResp)
 		if errResp.Message == "city not found" {
-			return nil, apierrors.ErrCityNotFound
+			return WeatherResponse{}, apierrors.ErrCityNotFound
 		}
-		return nil, fmt.Errorf("weather API 404: %s", errResp.Message)
+		return WeatherResponse{}, fmt.Errorf("weather API 404: %s", errResp.Message)
 	}
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("weather API returned status %d", resp.StatusCode)
+		return WeatherResponse{}, fmt.Errorf("weather API returned status %d", resp.StatusCode)
 	}
 
 	var weatherResp WeatherResponse
 	if err := json.NewDecoder(resp.Body).Decode(&weatherResp); err != nil {
-		return nil, fmt.Errorf("failed to decode weather response: %w", err)
+		return WeatherResponse{}, fmt.Errorf("failed to decode weather response: %w", err)
 	}
 
 	if len(weatherResp.Weather) == 0 {
-		return nil, fmt.Errorf("no weather data found")
+		return WeatherResponse{}, fmt.Errorf("no weather data found")
 	}
 
-	data := &contracts.WeatherData{
-		Description: weatherResp.Weather[0].Description,
-		Temperature: weatherResp.Main.Temp,
-		Humidity:    weatherResp.Main.Humidity,
-	}
+	// return  WeatherResponse{
+	// 	Description: weatherResp.Weather[0].Description,
+	// 	Temperature: weatherResp.Main.Temp,
+	// 	Humidity:    weatherResp.Main.Humidity,
+	// }
 
-	return data, nil
+	return weatherResp, nil
 }
