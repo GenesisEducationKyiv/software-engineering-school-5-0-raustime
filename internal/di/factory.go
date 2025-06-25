@@ -64,8 +64,8 @@ func BuildContainer() (Container, error) {
 	subscriptionRepo := repositories.NewSubscriptionRepo(db)
 
 	// Init Weather API adapters with config
-	openWeatherAdapter := adapters.NewOpenWeatherAdapter(cfg)
-	weatherAPIAdapter := adapters.NewWeatherAPIAdapter(cfg)
+	openWeatherAdapter := adapters.NewOpenWeatherAdapter(cfg.OpenWeatherKey)
+	weatherAPIAdapter := adapters.NewWeatherAPIAdapter(cfg.WeatherKey)
 
 	// Create logger
 	logger := logging.NewFileWeatherLogger("weather_providers.log")

@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"weatherapi/internal/adapters"
-	"weatherapi/internal/apierrors"
-	"weatherapi/internal/config"
 
 	"github.com/stretchr/testify/require"
+
+	"weatherapi/internal/adapters"
+	"weatherapi/internal/apierrors"
 )
 
 func TestWeatherAPIAdapter_CityNotFound(t *testing.T) {
@@ -20,8 +20,7 @@ func TestWeatherAPIAdapter_CityNotFound(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	cfg := &config.Config{WeatherKey: "fake-key"}
-	adapter := adapters.NewWeatherAPIAdapter(cfg)
+	adapter := adapters.NewWeatherAPIAdapter("fake-key")
 
 	originalBaseURL := adapters.WeatherAPIBaseURL
 	adapters.WeatherAPIBaseURL = func() string {
@@ -50,8 +49,7 @@ func TestWeatherAPIAdapter_Success(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	cfg := &config.Config{WeatherKey: "fake-key"}
-	adapter := adapters.NewWeatherAPIAdapter(cfg)
+	adapter := adapters.NewWeatherAPIAdapter("fake-key")
 
 	originalBaseURL := adapters.WeatherAPIBaseURL
 	adapters.WeatherAPIBaseURL = func() string {
@@ -75,8 +73,7 @@ func TestWeatherAPIAdapter_InvalidJSON(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	cfg := &config.Config{WeatherKey: "fake-key"}
-	adapter := adapters.NewWeatherAPIAdapter(cfg)
+	adapter := adapters.NewWeatherAPIAdapter("fake-key")
 
 	originalBaseURL := adapters.WeatherAPIBaseURL
 	adapters.WeatherAPIBaseURL = func() string {
@@ -98,8 +95,7 @@ func TestWeatherAPIAdapter_EmptyResponse(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	cfg := &config.Config{WeatherKey: "fake-key"}
-	adapter := adapters.NewWeatherAPIAdapter(cfg)
+	adapter := adapters.NewWeatherAPIAdapter("fake-key")
 
 	originalBaseURL := adapters.WeatherAPIBaseURL
 	adapters.WeatherAPIBaseURL = func() string {

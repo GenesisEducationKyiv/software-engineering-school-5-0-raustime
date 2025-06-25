@@ -93,8 +93,8 @@ func setupWeatherService(cfg *config.Config) weather_service.WeatherServiceProvi
 	logger := logging.NewFileWeatherLogger("test_weather_providers.log")
 
 	// Create adapters with config
-	openWeatherAdapter := adapters.NewOpenWeatherAdapter(cfg)
-	weatherAPIAdapter := adapters.NewWeatherAPIAdapter(cfg)
+	openWeatherAdapter := adapters.NewOpenWeatherAdapter(cfg.OpenWeatherKey)
+	weatherAPIAdapter := adapters.NewWeatherAPIAdapter(cfg.WeatherKey)
 
 	// Create handlers for the chain with logger
 	openWeatherHandler := chain.NewBaseWeatherHandler(openWeatherAdapter, "openweathermap.org", logger)
@@ -118,14 +118,14 @@ func setupWeatherServiceForTests(cfg *config.Config, useOnlyPrimary bool) weathe
 	logger := logging.NewFileWeatherLogger("test_weather_providers.log")
 
 	// Create adapters with config
-	openWeatherAdapter := adapters.NewOpenWeatherAdapter(cfg)
+	openWeatherAdapter := adapters.NewOpenWeatherAdapter(cfg.OpenWeatherKey)
 
 	// Create handler for the chain with logger
 	openWeatherHandler := chain.NewBaseWeatherHandler(openWeatherAdapter, "openweathermap.org", logger)
 
 	if !useOnlyPrimary {
 		// Add secondary provider for full chain
-		weatherAPIAdapter := adapters.NewWeatherAPIAdapter(cfg)
+		weatherAPIAdapter := adapters.NewWeatherAPIAdapter(cfg.WeatherKey)
 		weatherAPIHandler := chain.NewBaseWeatherHandler(weatherAPIAdapter, "weatherapi.com", logger)
 		openWeatherHandler.SetNext(weatherAPIHandler)
 	}
@@ -247,8 +247,8 @@ func setupWeatherServiceWithMockLogger(cfg *config.Config) weather_service.Weath
 	mockLogger := logging.NewMockLogger()
 
 	// Create adapters with config
-	openWeatherAdapter := adapters.NewOpenWeatherAdapter(cfg)
-	weatherAPIAdapter := adapters.NewWeatherAPIAdapter(cfg)
+	openWeatherAdapter := adapters.NewOpenWeatherAdapter(cfg.OpenWeatherKey)
+	weatherAPIAdapter := adapters.NewWeatherAPIAdapter(cfg.WeatherKey)
 
 	// Create handlers for the chain with mock logger
 	openWeatherHandler := chain.NewBaseWeatherHandler(openWeatherAdapter, "openweathermap.org", mockLogger)

@@ -8,42 +8,48 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 	"weatherapi/internal/apierrors"
-	"weatherapi/internal/config"
 	"weatherapi/internal/contracts"
 )
 
+const WEATHER_SERVER_TIMEOUT = 10 * time.Second
+
 type WeatherAPIAdapter struct {
-	config *config.Config
+	configApiKey string
 }
 
 var WeatherAPIBaseURL = func() string {
-	return "http://api.weatherapi.com/v1"
+	return "https://api.weatherapi.com/v1"
 }
 
-func NewWeatherAPIAdapter(cfg *config.Config) *WeatherAPIAdapter {
+func NewWeatherAPIAdapter(apikey string) *WeatherAPIAdapter {
 	return &WeatherAPIAdapter{
-		config: cfg,
+		configApiKey: apikey,
 	}
 }
 
 func (a *WeatherAPIAdapter) FetchWeather(ctx context.Context, city string) (contracts.WeatherData, error) {
-	if a.config.WeatherKey == "" {
+	if a.configApiKey == "" {
 		return contracts.WeatherData{}, fmt.Errorf("WEATHER_API_KEY is not configured")
 	}
 	if city == "" {
 		return contracts.WeatherData{}, fmt.Errorf("empty city provided")
 	}
 	qCity := url.QueryEscape(city)
-	url := fmt.Sprintf("%s/current.json?key=%s&q=%s", WeatherAPIBaseURL(), a.config.WeatherKey, qCity)
+	url := fmt.Sprintf("%s/current.json?key=%s&q=%s", WeatherAPIBaseURL(), a.configApiKey, qCity)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return contracts.WeatherData{}, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: WEATHER_SERVER_TIMEOUT,
+	}
+
 	resp, err := client.Do(req)
+
 	if err != nil {
 		return contracts.WeatherData{}, fmt.Errorf("failed to get weather from WeatherAPI: %w", err)
 	}

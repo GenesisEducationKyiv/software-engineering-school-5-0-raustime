@@ -6,39 +6,44 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 	"weatherapi/internal/apierrors"
-	"weatherapi/internal/config"
 	"weatherapi/internal/contracts"
 )
 
+const OPENWEATHER_SERVER_TIMEOUT = 10 * time.Second
+
 type OpenWeatherAdapter struct {
-	config *config.Config
+	configApiKey string
 }
 
 var OpenWeatherAPIBaseURL = func() string {
 	return "https://api.openweathermap.org/data/2.5"
 }
 
-func NewOpenWeatherAdapter(cfg *config.Config) *OpenWeatherAdapter {
+func NewOpenWeatherAdapter(apikey string) *OpenWeatherAdapter {
 	return &OpenWeatherAdapter{
-		config: cfg,
+		configApiKey: apikey,
 	}
 }
 
 func (a *OpenWeatherAdapter) FetchWeather(ctx context.Context, city string) (contracts.WeatherData, error) {
-	if a.config.OpenWeatherKey == "" {
+	if a.configApiKey == "" {
 		return contracts.WeatherData{}, fmt.Errorf("OPENWEATHER_API_KEY is not configured")
 	}
 
 	url := fmt.Sprintf("%s/weather?q=%s&appid=%s&units=metric",
-		OpenWeatherAPIBaseURL(), city, a.config.OpenWeatherKey)
+		OpenWeatherAPIBaseURL(), city, a.configApiKey)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return contracts.WeatherData{}, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: OPENWEATHER_SERVER_TIMEOUT,
+	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return contracts.WeatherData{}, fmt.Errorf("failed to get weather: %w", err)
