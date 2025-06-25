@@ -19,6 +19,7 @@ import (
 	"weatherapi/internal/db/migration"
 	"weatherapi/internal/db/repositories"
 	"weatherapi/internal/jobs"
+	"weatherapi/internal/logging"
 	"weatherapi/internal/server"
 	"weatherapi/internal/services/mailer_service"
 	"weatherapi/internal/services/subscription_service"
@@ -61,13 +62,16 @@ func BuildContainer() (Container, error) {
 	}
 
 	subscriptionRepo := repositories.NewSubscriptionRepo(db)
-	// Init Weather API adapter
-	//api := adapters.OpenWeatherAdapter{}
-	openWeatherAdapter := &adapters.OpenWeatherAdapter{}
-	weatherAPIAdapter := &adapters.WeatherAPIAdapter{}
 
-	openWeatherHandler := chain.NewBaseWeatherHandler(openWeatherAdapter, "openweathermap.org")
-	weatherAPIHandler := chain.NewBaseWeatherHandler(weatherAPIAdapter, "weatherapi.com")
+	// Init Weather API adapters with config
+	openWeatherAdapter := adapters.NewOpenWeatherAdapter(cfg)
+	weatherAPIAdapter := adapters.NewWeatherAPIAdapter(cfg)
+
+	// Create logger
+	logger := logging.NewFileWeatherLogger("weather_providers.log")
+
+	openWeatherHandler := chain.NewBaseWeatherHandler(openWeatherAdapter, "openweathermap.org", logger)
+	weatherAPIHandler := chain.NewBaseWeatherHandler(weatherAPIAdapter, "weatherapi.com", logger)
 
 	// Set up the chain: OpenWeather -> WeatherAPI
 	openWeatherHandler.SetNext(weatherAPIHandler)
