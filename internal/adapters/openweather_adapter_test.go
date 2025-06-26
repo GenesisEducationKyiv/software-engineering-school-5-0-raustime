@@ -19,7 +19,7 @@ func TestOpenWeatherAdapter_CityNotFound(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	adapter, err := adapters.NewWeatherAPIAdapter("fake-key")
+	adapter, err := adapters.NewOpenWeatherAdapter("fake-key")
 
 	if err != nil {
 		t.Fatalf("Failed to create adapter: %v", err)
@@ -49,7 +49,7 @@ func TestOpenWeatherAdapter_Success(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	adapter, err := adapters.NewWeatherAPIAdapter("fake-key")
+	adapter, err := adapters.NewOpenWeatherAdapter("fake-key")
 
 	if err != nil {
 		t.Fatalf("Failed to create adapter: %v", err)
@@ -77,7 +77,7 @@ func TestOpenWeatherAdapter_InvalidJSON(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	adapter, err := adapters.NewWeatherAPIAdapter("fake-key")
+	adapter, err := adapters.NewOpenWeatherAdapter("fake-key")
 
 	if err != nil {
 		t.Fatalf("Failed to create adapter: %v", err)
