@@ -14,7 +14,6 @@ import (
 	"github.com/uptrace/bun/extra/bundebug"
 
 	"weatherapi/internal/adapters"
-	"weatherapi/internal/chain"
 	"weatherapi/internal/config"
 	"weatherapi/internal/db/migration"
 	"weatherapi/internal/db/repositories"
@@ -24,6 +23,7 @@ import (
 	"weatherapi/internal/services/mailer_service"
 	"weatherapi/internal/services/subscription_service"
 	"weatherapi/internal/services/weather_service"
+	"weatherapi/internal/services/weather_service/chain"
 )
 
 type Container struct {

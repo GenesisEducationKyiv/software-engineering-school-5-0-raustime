@@ -4,8 +4,8 @@ import (
 	"context"
 
 	api_errors "weatherapi/internal/apierrors"
-	"weatherapi/internal/chain"
 	"weatherapi/internal/contracts"
+	"weatherapi/internal/services/weather_service/chain"
 )
 
 // WeatherServiceProvider defines the interface for weather service
@@ -40,46 +40,3 @@ func (s WeatherService) GetWeather(ctx context.Context, city string) (contracts.
 
 	return data, nil
 }
-
-// Example of how to set up the chain in main.go or dependency injection
-/*
-package main
-
-import (
-	"context"
-	"log"
-	"weatherapi/internal/adapters"
-	"weatherapi/internal/chain"
-	"weatherapi/internal/weather_service"
-)
-
-func main() {
-	// Create adapters
-	openWeatherAdapter := &adapters.OpenWeatherAdapter{}
-	weatherAPIAdapter := &adapters.WeatherAPIAdapter{}
-
-	// Create handlers
-	openWeatherHandler := chain.NewBaseWeatherHandler(openWeatherAdapter, "openweathermap.org")
-	weatherAPIHandler := chain.NewBaseWeatherHandler(weatherAPIAdapter, "weatherapi.com")
-
-	// Set up the chain: OpenWeather -> WeatherAPI
-	openWeatherHandler.SetNext(weatherAPIHandler)
-
-	// Create and configure the chain
-	weatherChain := chain.NewWeatherChain()
-	weatherChain.SetFirstHandler(openWeatherHandler)
-
-	// Create weather service
-	weatherService := weather_service.NewWeatherService(weatherChain)
-
-	// Use the service
-	ctx := context.Background()
-	data, err := weatherService.GetWeather(ctx, "London")
-	if err != nil {
-		log.Printf("Error: %v", err)
-		return
-	}
-
-	log.Printf("Weather data: %+v", data)
-}
-*/
