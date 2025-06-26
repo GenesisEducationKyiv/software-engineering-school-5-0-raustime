@@ -23,16 +23,16 @@ var WeatherAPIBaseURL = func() string {
 	return "https://api.weatherapi.com/v1"
 }
 
-func NewWeatherAPIAdapter(apikey string) *WeatherAPIAdapter {
-	return &WeatherAPIAdapter{
-		configApiKey: apikey,
+func NewWeatherAPIAdapter(apikey string) (WeatherAPIAdapter, error) {
+	if apikey == "" {
+		return WeatherAPIAdapter{}, fmt.Errorf("WEATHER_API_KEY is not configured")
 	}
+	return WeatherAPIAdapter{
+		configApiKey: apikey,
+	}, nil
 }
 
 func (a *WeatherAPIAdapter) FetchWeather(ctx context.Context, city string) (contracts.WeatherData, error) {
-	if a.configApiKey == "" {
-		return contracts.WeatherData{}, fmt.Errorf("WEATHER_API_KEY is not configured")
-	}
 	if city == "" {
 		return contracts.WeatherData{}, fmt.Errorf("empty city provided")
 	}

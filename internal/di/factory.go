@@ -64,14 +64,21 @@ func BuildContainer() (Container, error) {
 	subscriptionRepo := repositories.NewSubscriptionRepo(db)
 
 	// Init Weather API adapters with config
-	openWeatherAdapter := adapters.NewOpenWeatherAdapter(cfg.OpenWeatherKey)
-	weatherAPIAdapter := adapters.NewWeatherAPIAdapter(cfg.WeatherKey)
+	openWeatherAdapter, err := adapters.NewOpenWeatherAdapter(cfg.OpenWeatherKey)
+	if err != nil {
+		return Container{}, fmt.Errorf("failed to create adapter: %w", err)
+	}
+
+	weatherAPIAdapter, err := adapters.NewWeatherAPIAdapter(cfg.WeatherKey)
+	if err != nil {
+		return Container{}, fmt.Errorf("failed to create adapter: %w", err)
+	}
 
 	// Create logger
 	logger := logging.NewFileWeatherLogger("weather_providers.log")
 
-	openWeatherHandler := chain.NewBaseWeatherHandler(openWeatherAdapter, "openweathermap.org")
-	weatherAPIHandler := chain.NewBaseWeatherHandler(weatherAPIAdapter, "weatherapi.com")
+	openWeatherHandler := chain.NewBaseWeatherHandler(&openWeatherAdapter, "openweathermap.org")
+	weatherAPIHandler := chain.NewBaseWeatherHandler(&weatherAPIAdapter, "weatherapi.com")
 
 	// Set up the chain: OpenWeather -> WeatherAPI
 	openWeatherHandler.SetNext(weatherAPIHandler)

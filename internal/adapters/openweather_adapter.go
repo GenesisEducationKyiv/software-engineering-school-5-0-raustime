@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"time"
 	"weatherapi/internal/apierrors"
 	"weatherapi/internal/contracts"
@@ -21,19 +22,22 @@ var OpenWeatherAPIBaseURL = func() string {
 	return "https://api.openweathermap.org/data/2.5"
 }
 
-func NewOpenWeatherAdapter(apikey string) *OpenWeatherAdapter {
-	return &OpenWeatherAdapter{
-		configApiKey: apikey,
+func NewOpenWeatherAdapter(apikey string) (OpenWeatherAdapter, error) {
+	if apikey == "" {
+		return OpenWeatherAdapter{}, fmt.Errorf("OPENWEATHER_API_KEY is not configured")
 	}
+	return OpenWeatherAdapter{
+		configApiKey: apikey,
+	}, nil
 }
 
 func (a *OpenWeatherAdapter) FetchWeather(ctx context.Context, city string) (contracts.WeatherData, error) {
-	if a.configApiKey == "" {
-		return contracts.WeatherData{}, fmt.Errorf("OPENWEATHER_API_KEY is not configured")
+	if city == "" {
+		return contracts.WeatherData{}, fmt.Errorf("empty city provided")
 	}
-
+	qCity := url.QueryEscape(city)
 	url := fmt.Sprintf("%s/weather?q=%s&appid=%s&units=metric",
-		OpenWeatherAPIBaseURL(), city, a.configApiKey)
+		OpenWeatherAPIBaseURL(), qCity, a.configApiKey)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {

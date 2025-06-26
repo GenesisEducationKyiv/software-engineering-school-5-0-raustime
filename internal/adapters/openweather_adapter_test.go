@@ -19,7 +19,11 @@ func TestOpenWeatherAdapter_CityNotFound(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	adapter := adapters.NewOpenWeatherAdapter("fake-key")
+	adapter, err := adapters.NewWeatherAPIAdapter("fake-key")
+
+	if err != nil {
+		t.Fatalf("Failed to create adapter: %v", err)
+	}
 
 	originalBaseURL := adapters.OpenWeatherAPIBaseURL
 	adapters.OpenWeatherAPIBaseURL = func() string {
@@ -29,7 +33,7 @@ func TestOpenWeatherAdapter_CityNotFound(t *testing.T) {
 		adapters.OpenWeatherAPIBaseURL = originalBaseURL
 	}()
 
-	_, err := adapter.FetchWeather(context.Background(), "InvalidCity")
+	_, err = adapter.FetchWeather(context.Background(), "InvalidCity")
 	require.ErrorIs(t, err, apierrors.ErrCityNotFound)
 }
 
@@ -45,7 +49,11 @@ func TestOpenWeatherAdapter_Success(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	adapter := adapters.NewOpenWeatherAdapter("fake-key")
+	adapter, err := adapters.NewWeatherAPIAdapter("fake-key")
+
+	if err != nil {
+		t.Fatalf("Failed to create adapter: %v", err)
+	}
 
 	originalBaseURL := adapters.OpenWeatherAPIBaseURL
 	adapters.OpenWeatherAPIBaseURL = func() string {
@@ -69,7 +77,11 @@ func TestOpenWeatherAdapter_InvalidJSON(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	adapter := adapters.NewOpenWeatherAdapter("fake-key")
+	adapter, err := adapters.NewWeatherAPIAdapter("fake-key")
+
+	if err != nil {
+		t.Fatalf("Failed to create adapter: %v", err)
+	}
 
 	originalBaseURL := adapters.OpenWeatherAPIBaseURL
 	adapters.OpenWeatherAPIBaseURL = func() string {
@@ -79,7 +91,7 @@ func TestOpenWeatherAdapter_InvalidJSON(t *testing.T) {
 		adapters.OpenWeatherAPIBaseURL = originalBaseURL
 	}()
 
-	_, err := adapter.FetchWeather(context.Background(), "Kyiv")
+	_, err = adapter.FetchWeather(context.Background(), "Kyiv")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to decode")
 }
