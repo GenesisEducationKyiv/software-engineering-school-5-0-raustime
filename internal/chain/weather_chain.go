@@ -3,7 +3,6 @@ package chain
 import (
 	"context"
 	"fmt"
-	"log"
 	"weatherapi/internal/contracts"
 )
 
@@ -45,15 +44,11 @@ func (h *BaseWeatherHandler) Handle(ctx context.Context, city string) (contracts
 	data, err := h.api.FetchWeather(ctx, city)
 
 	if err != nil {
-		log.Printf("Provider %s failed: %v", h.name, err)
 		if h.next != nil {
-			log.Printf("Trying next provider in chain...")
 			return h.next.Handle(ctx, city)
 		}
 		return contracts.WeatherData{}, fmt.Errorf("all weather providers failed, last error from %s: %w", h.name, err)
 	}
-
-	log.Printf("Successfully got weather data from provider: %s", h.name)
 	return data, nil
 }
 
