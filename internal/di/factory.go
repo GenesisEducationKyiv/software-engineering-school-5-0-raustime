@@ -70,13 +70,13 @@ func BuildContainer() (Container, error) {
 	// Create logger
 	logger := logging.NewFileWeatherLogger("weather_providers.log")
 
-	openWeatherHandler := chain.NewBaseWeatherHandler(openWeatherAdapter, "openweathermap.org", logger)
-	weatherAPIHandler := chain.NewBaseWeatherHandler(weatherAPIAdapter, "weatherapi.com", logger)
+	openWeatherHandler := chain.NewBaseWeatherHandler(openWeatherAdapter, "openweathermap.org")
+	weatherAPIHandler := chain.NewBaseWeatherHandler(weatherAPIAdapter, "weatherapi.com")
 
 	// Set up the chain: OpenWeather -> WeatherAPI
 	openWeatherHandler.SetNext(weatherAPIHandler)
 
-	weatherChain := chain.NewWeatherChain()
+	weatherChain := chain.NewWeatherChain(logger)
 	weatherChain.SetFirstHandler(openWeatherHandler)
 
 	weatherService := weather_service.NewWeatherService(weatherChain)

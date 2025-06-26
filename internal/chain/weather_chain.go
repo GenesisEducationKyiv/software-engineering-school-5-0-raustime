@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"weatherapi/internal/contracts"
-	"weatherapi/internal/logging"
 )
 
 // WeatherHandler defines the interface for weather handlers in the chain
@@ -17,21 +16,19 @@ type WeatherHandler interface {
 
 // BaseWeatherHandler provides common functionality for all handlers
 type BaseWeatherHandler struct {
-	next   WeatherHandler
-	api    WeatherAPIProvider
-	name   string
-	logger logging.WeatherLogger
+	next WeatherHandler
+	api  WeatherAPIProvider
+	name string
 }
 
 type WeatherAPIProvider interface {
 	FetchWeather(ctx context.Context, city string) (contracts.WeatherData, error)
 }
 
-func NewBaseWeatherHandler(api WeatherAPIProvider, name string, logger logging.WeatherLogger) *BaseWeatherHandler {
+func NewBaseWeatherHandler(api WeatherAPIProvider, name string) *BaseWeatherHandler {
 	return &BaseWeatherHandler{
-		api:    api,
-		name:   name,
-		logger: logger,
+		api:  api,
+		name: name,
 	}
 }
 
@@ -46,11 +43,6 @@ func (h *BaseWeatherHandler) GetProviderName() string {
 
 func (h *BaseWeatherHandler) Handle(ctx context.Context, city string) (contracts.WeatherData, error) {
 	data, err := h.api.FetchWeather(ctx, city)
-
-	// Логування через окремий компонент
-	if h.logger != nil {
-		h.logger.LogResponse(h.name, data, err)
-	}
 
 	if err != nil {
 		log.Printf("Provider %s failed: %v", h.name, err)
@@ -68,10 +60,17 @@ func (h *BaseWeatherHandler) Handle(ctx context.Context, city string) (contracts
 // WeatherChain manages the chain of weather providers
 type WeatherChain struct {
 	firstHandler WeatherHandler
+	logger       WeatherLogger
 }
 
-func NewWeatherChain() *WeatherChain {
-	return &WeatherChain{}
+type WeatherLogger interface {
+	LogResponse(provider string, data contracts.WeatherData, err error)
+}
+
+func NewWeatherChain(logger WeatherLogger) *WeatherChain {
+	return &WeatherChain{
+		logger: logger,
+	}
 }
 
 func (c *WeatherChain) SetFirstHandler(handler WeatherHandler) {
@@ -83,5 +82,16 @@ func (c *WeatherChain) GetWeather(ctx context.Context, city string) (contracts.W
 		return contracts.WeatherData{}, fmt.Errorf("no weather providers configured")
 	}
 
-	return c.firstHandler.Handle(ctx, city)
+	data, err := c.firstHandler.Handle(ctx, city)
+
+	// Логування результату на рівні ланцюга
+	if c.logger != nil {
+		providerName := "unknown"
+		if c.firstHandler != nil {
+			providerName = c.firstHandler.GetProviderName()
+		}
+		c.logger.LogResponse(providerName, data, err)
+	}
+
+	return data, err
 }

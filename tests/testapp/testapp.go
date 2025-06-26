@@ -97,15 +97,15 @@ func setupWeatherService(cfg *config.Config) weather_service.WeatherServiceProvi
 	weatherAPIAdapter := adapters.NewWeatherAPIAdapter(cfg.WeatherKey)
 
 	// Create handlers for the chain with logger
-	openWeatherHandler := chain.NewBaseWeatherHandler(openWeatherAdapter, "openweathermap.org", logger)
-	weatherAPIHandler := chain.NewBaseWeatherHandler(weatherAPIAdapter, "weatherapi.com", logger)
+	openWeatherHandler := chain.NewBaseWeatherHandler(openWeatherAdapter, "openweathermap.org")
+	weatherAPIHandler := chain.NewBaseWeatherHandler(weatherAPIAdapter, "weatherapi.com")
 
 	// Set up the chain: OpenWeather -> WeatherAPI
 	// In tests, we might want to use a simpler chain or mock
 	openWeatherHandler.SetNext(weatherAPIHandler)
 
 	// Create and configure the chain
-	weatherChain := chain.NewWeatherChain()
+	weatherChain := chain.NewWeatherChain(logger)
 	weatherChain.SetFirstHandler(openWeatherHandler)
 
 	// Create weather service with the chain
@@ -121,17 +121,17 @@ func setupWeatherServiceForTests(cfg *config.Config, useOnlyPrimary bool) weathe
 	openWeatherAdapter := adapters.NewOpenWeatherAdapter(cfg.OpenWeatherKey)
 
 	// Create handler for the chain with logger
-	openWeatherHandler := chain.NewBaseWeatherHandler(openWeatherAdapter, "openweathermap.org", logger)
+	openWeatherHandler := chain.NewBaseWeatherHandler(openWeatherAdapter, "openweathermap.org")
 
 	if !useOnlyPrimary {
 		// Add secondary provider for full chain
 		weatherAPIAdapter := adapters.NewWeatherAPIAdapter(cfg.WeatherKey)
-		weatherAPIHandler := chain.NewBaseWeatherHandler(weatherAPIAdapter, "weatherapi.com", logger)
+		weatherAPIHandler := chain.NewBaseWeatherHandler(weatherAPIAdapter, "weatherapi.com")
 		openWeatherHandler.SetNext(weatherAPIHandler)
 	}
 
 	// Create and configure the chain
-	weatherChain := chain.NewWeatherChain()
+	weatherChain := chain.NewWeatherChain(logger)
 	weatherChain.SetFirstHandler(openWeatherHandler)
 
 	// Create weather service with the chain
@@ -251,14 +251,14 @@ func setupWeatherServiceWithMockLogger(cfg *config.Config) weather_service.Weath
 	weatherAPIAdapter := adapters.NewWeatherAPIAdapter(cfg.WeatherKey)
 
 	// Create handlers for the chain with mock logger
-	openWeatherHandler := chain.NewBaseWeatherHandler(openWeatherAdapter, "openweathermap.org", mockLogger)
-	weatherAPIHandler := chain.NewBaseWeatherHandler(weatherAPIAdapter, "weatherapi.com", mockLogger)
+	openWeatherHandler := chain.NewBaseWeatherHandler(openWeatherAdapter, "openweathermap.org")
+	weatherAPIHandler := chain.NewBaseWeatherHandler(weatherAPIAdapter, "weatherapi.com")
 
 	// Set up the chain: OpenWeather -> WeatherAPI
 	openWeatherHandler.SetNext(weatherAPIHandler)
 
 	// Create and configure the chain
-	weatherChain := chain.NewWeatherChain()
+	weatherChain := chain.NewWeatherChain(mockLogger)
 	weatherChain.SetFirstHandler(openWeatherHandler)
 
 	// Create weather service with the chain
