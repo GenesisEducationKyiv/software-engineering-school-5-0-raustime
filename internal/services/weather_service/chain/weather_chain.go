@@ -42,6 +42,12 @@ func (h *BaseWeatherHandler) GetProviderName() string {
 
 func (h *BaseWeatherHandler) Handle(ctx context.Context, city string) (contracts.WeatherData, error) {
 	data, err := h.api.FetchWeather(ctx, city)
+	// Logging result every provider
+	if logger := ctx.Value(weatherLoggerKey); logger != nil {
+		if wl, ok := logger.(WeatherLogger); ok {
+			wl.LogResponse(h.name, data, err)
+		}
+	}
 
 	if err != nil {
 		if h.next != nil {
@@ -72,21 +78,18 @@ func (c *WeatherChain) SetFirstHandler(handler WeatherHandler) {
 	c.firstHandler = handler
 }
 
+type weatherLoggerKeyType struct{}
+
+var weatherLoggerKey = weatherLoggerKeyType{}
+
 func (c *WeatherChain) GetWeather(ctx context.Context, city string) (contracts.WeatherData, error) {
 	if c.firstHandler == nil {
 		return contracts.WeatherData{}, fmt.Errorf("no weather providers configured")
 	}
 
-	data, err := c.firstHandler.Handle(ctx, city)
+	// Insert logger in context using a custom key type
+	ctx = context.WithValue(ctx, weatherLoggerKey, c.logger)
 
-	// Логування результату на рівні ланцюга
-	if c.logger != nil {
-		providerName := "unknown"
-		if c.firstHandler != nil {
-			providerName = c.firstHandler.GetProviderName()
-		}
-		c.logger.LogResponse(providerName, data, err)
-	}
+	return c.firstHandler.Handle(ctx, city)
 
-	return data, err
 }
