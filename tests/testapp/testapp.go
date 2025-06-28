@@ -9,7 +9,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 	"weatherapi/internal/adapters"
+	"weatherapi/internal/cache"
 	"weatherapi/internal/config"
 	"weatherapi/internal/db/migration"
 	"weatherapi/internal/db/repositories"
@@ -120,8 +122,11 @@ func setupWeatherService(cfg *config.Config) (weather_service.WeatherServiceProv
 	weatherChain := chain.NewWeatherChain(logger)
 	weatherChain.SetFirstHandler(openWeatherHandler)
 
-	// Create weather service with the chain
-	return weather_service.NewWeatherService(weatherChain), nil
+	cache := cache.NoopWeatherCache{} // Use a no-op cache
+	cacheDuration := 5 * 60           // 5 minutes in seconds
+	enableCache := false
+
+	return weather_service.NewWeatherService(weatherChain, cache, time.Duration(cacheDuration)*time.Second, enableCache), nil
 }
 
 // Alternative setup for tests that need more control
@@ -155,7 +160,10 @@ func setupWeatherServiceForTests(cfg *config.Config, useOnlyPrimary bool) (weath
 	weatherChain.SetFirstHandler(openWeatherHandler)
 
 	// Create weather service with the chain
-	return weather_service.NewWeatherService(weatherChain), nil
+	cache := cache.NoopWeatherCache{} // Use a no-op cache
+	cacheDuration := 5 * 60           // 5 minutes in seconds
+	enableCache := false
+	return weather_service.NewWeatherService(weatherChain, cache, time.Duration(cacheDuration)*time.Second, enableCache), nil
 }
 
 // InitializeWithSingleProvider creates a test container with only one weather provider
@@ -295,7 +303,10 @@ func setupWeatherServiceWithMockLogger(cfg *config.Config) (weather_service.Weat
 	weatherChain.SetFirstHandler(openWeatherHandler)
 
 	// Create weather service with the chain
-	return weather_service.NewWeatherService(weatherChain), nil
+	cache := cache.NoopWeatherCache{} // Use a no-op cache for tests
+	cacheDuration := 5 * 60           // 5 minutes in seconds
+	enableCache := false
+	return weather_service.NewWeatherService(weatherChain, cache, time.Duration(cacheDuration)*time.Second, enableCache), nil
 }
 
 func initDatabase(cfg *config.Config) (*bun.DB, error) {

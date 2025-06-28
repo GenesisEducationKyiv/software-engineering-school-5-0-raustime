@@ -14,6 +14,7 @@ import (
 	"github.com/uptrace/bun/extra/bundebug"
 
 	"weatherapi/internal/adapters"
+	"weatherapi/internal/cache"
 	"weatherapi/internal/config"
 	"weatherapi/internal/db/migration"
 	"weatherapi/internal/db/repositories"
@@ -73,7 +74,7 @@ func BuildContainer() (Container, error) {
 	if err != nil {
 		return Container{}, fmt.Errorf("failed to create adapter: %w", err)
 	}
-
+	// Chain
 	// Create logger
 	logger := logging.NewFileWeatherLogger("weather_providers.log")
 
@@ -86,7 +87,35 @@ func BuildContainer() (Container, error) {
 	weatherChain := chain.NewWeatherChain(logger)
 	weatherChain.SetFirstHandler(openWeatherHandler)
 
-	weatherService := weather_service.NewWeatherService(weatherChain)
+	// Init Redis cache
+	var redisCache cache.WeatherCache
+	if cfg.Cache.Enabled {
+		redisCache, err = cache.NewRedisCache(
+			cache.RedisConfig{
+				Addr:     cfg.Cache.Redis.Addr,
+				Password: cfg.Cache.Redis.Password,
+				DB:       cfg.Cache.Redis.DB,
+				PoolSize: cfg.Cache.Redis.PoolSize,
+				Timeout:  cfg.Cache.Redis.Timeout,
+			},
+			cache.CacheConfig{
+				DefaultExpiration: cfg.Cache.Expiration,
+			},
+		)
+		if err != nil {
+			return Container{}, fmt.Errorf("failed to initialize Redis cache: %w", err)
+		}
+	} else {
+		redisCache = cache.NoopWeatherCache{}
+	}
+
+	// Weather service
+	weatherService := weather_service.NewWeatherService(
+		weatherChain,
+		redisCache,
+		cfg.Cache.Expiration,
+		cfg.Cache.Enabled,
+	)
 	mailerService := mailer_service.NewMailerService(mailer_service.NewSMTPSender(cfg.SMTPUser, cfg.SMTPPassword, cfg.SMTPHost, strconv.Itoa(cfg.SMTPPort)), cfg.AppBaseURL)
 
 	subscriptionService := subscription_service.New(subscriptionRepo, mailerService)
