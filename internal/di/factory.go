@@ -14,15 +14,16 @@ import (
 	"github.com/uptrace/bun/extra/bundebug"
 
 	"weatherapi/internal/adapters"
-	"weatherapi/internal/chain"
 	"weatherapi/internal/config"
 	"weatherapi/internal/db/migration"
 	"weatherapi/internal/db/repositories"
 	"weatherapi/internal/jobs"
+	"weatherapi/internal/logging"
 	"weatherapi/internal/server"
 	"weatherapi/internal/services/mailer_service"
 	"weatherapi/internal/services/subscription_service"
 	"weatherapi/internal/services/weather_service"
+	"weatherapi/internal/services/weather_service/chain"
 )
 
 type Container struct {
@@ -61,18 +62,28 @@ func BuildContainer() (Container, error) {
 	}
 
 	subscriptionRepo := repositories.NewSubscriptionRepo(db)
-	// Init Weather API adapter
-	//api := adapters.OpenWeatherAdapter{}
-	openWeatherAdapter := &adapters.OpenWeatherAdapter{}
-	weatherAPIAdapter := &adapters.WeatherAPIAdapter{}
 
-	openWeatherHandler := chain.NewBaseWeatherHandler(openWeatherAdapter, "openweathermap.org")
-	weatherAPIHandler := chain.NewBaseWeatherHandler(weatherAPIAdapter, "weatherapi.com")
+	// Init Weather API adapters with config
+	openWeatherAdapter, err := adapters.NewOpenWeatherAdapter(cfg.OpenWeatherKey)
+	if err != nil {
+		return Container{}, fmt.Errorf("failed to create adapter: %w", err)
+	}
+
+	weatherAPIAdapter, err := adapters.NewWeatherAPIAdapter(cfg.WeatherKey)
+	if err != nil {
+		return Container{}, fmt.Errorf("failed to create adapter: %w", err)
+	}
+
+	// Create logger
+	logger := logging.NewFileWeatherLogger("weather_providers.log")
+
+	openWeatherHandler := chain.NewBaseWeatherHandler(&openWeatherAdapter, "openweathermap.org")
+	weatherAPIHandler := chain.NewBaseWeatherHandler(&weatherAPIAdapter, "weatherapi.com")
 
 	// Set up the chain: OpenWeather -> WeatherAPI
 	openWeatherHandler.SetNext(weatherAPIHandler)
 
-	weatherChain := chain.NewWeatherChain()
+	weatherChain := chain.NewWeatherChain(logger)
 	weatherChain.SetFirstHandler(openWeatherHandler)
 
 	weatherService := weather_service.NewWeatherService(weatherChain)

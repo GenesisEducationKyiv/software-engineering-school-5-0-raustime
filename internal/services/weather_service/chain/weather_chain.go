@@ -2,10 +2,7 @@ package chain
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"log"
-	"os"
 	"weatherapi/internal/contracts"
 )
 
@@ -45,74 +42,54 @@ func (h *BaseWeatherHandler) GetProviderName() string {
 
 func (h *BaseWeatherHandler) Handle(ctx context.Context, city string) (contracts.WeatherData, error) {
 	data, err := h.api.FetchWeather(ctx, city)
-
-	// Log the response
-	h.logResponse(data, err)
+	// Logging result every provider
+	if logger := ctx.Value(weatherLoggerKey); logger != nil {
+		if wl, ok := logger.(WeatherLogger); ok {
+			wl.LogResponse(h.name, data, err)
+		}
+	}
 
 	if err != nil {
-		log.Printf("Provider %s failed: %v", h.name, err)
 		if h.next != nil {
-			log.Printf("Trying next provider in chain...")
 			return h.next.Handle(ctx, city)
 		}
 		return contracts.WeatherData{}, fmt.Errorf("all weather providers failed, last error from %s: %w", h.name, err)
 	}
-
-	log.Printf("Successfully got weather data from provider: %s", h.name)
 	return data, nil
-}
-
-func (h *BaseWeatherHandler) logResponse(data contracts.WeatherData, err error) {
-	logEntry := map[string]interface{}{
-		"provider": h.name,
-		"success":  err == nil,
-	}
-
-	if err != nil {
-		logEntry["error"] = err.Error()
-	} else {
-		logEntry["response"] = data
-	}
-
-	logJSON, _ := json.Marshal(logEntry)
-
-	// Log to file
-	h.logToFile(string(logJSON))
-
-	// Also log to console for debugging
-	log.Printf("%s - Response: %s", h.name, string(logJSON))
-}
-
-func (h *BaseWeatherHandler) logToFile(logMessage string) {
-	file, err := os.OpenFile("weather_providers.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Printf("Failed to open log file: %v", err)
-		return
-	}
-	defer file.Close()
-
-	if _, err := file.WriteString(fmt.Sprintf("%s\n", logMessage)); err != nil {
-		log.Printf("Failed to write to log file: %v", err)
-	}
 }
 
 // WeatherChain manages the chain of weather providers
 type WeatherChain struct {
 	firstHandler WeatherHandler
+	logger       WeatherLogger
 }
 
-func NewWeatherChain() *WeatherChain {
-	return &WeatherChain{}
+type WeatherLogger interface {
+	LogResponse(provider string, data contracts.WeatherData, err error)
+}
+
+func NewWeatherChain(logger WeatherLogger) *WeatherChain {
+	return &WeatherChain{
+		logger: logger,
+	}
 }
 
 func (c *WeatherChain) SetFirstHandler(handler WeatherHandler) {
 	c.firstHandler = handler
 }
 
+type weatherLoggerKeyType struct{}
+
+var weatherLoggerKey = weatherLoggerKeyType{}
+
 func (c *WeatherChain) GetWeather(ctx context.Context, city string) (contracts.WeatherData, error) {
 	if c.firstHandler == nil {
 		return contracts.WeatherData{}, fmt.Errorf("no weather providers configured")
 	}
 
+	// Insert logger in context using a custom key type
+	ctx = context.WithValue(ctx, weatherLoggerKey, c.logger)
+
 	return c.firstHandler.Handle(ctx, city)
+
 }

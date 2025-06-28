@@ -13,6 +13,7 @@ type Config struct {
 	DatabaseURL     string
 	DatabaseTestURL string
 	OpenWeatherKey  string
+	WeatherKey      string
 	SMTPHost        string
 	SMTPPort        int
 	SMTPUser        string
@@ -34,6 +35,7 @@ func Load() (*Config, error) {
 		DatabaseURL:     getEnv("DB_URL", ""),
 		DatabaseTestURL: getEnv("TEST_DB_URL", ""),
 		OpenWeatherKey:  getEnv("OPENWEATHER_API_KEY", ""),
+		WeatherKey:      getEnv("WEATHER_API_KEY", ""),
 		SMTPHost:        getEnv("SMTP_HOST", ""),
 		SMTPPort:        smtpPort,
 		SMTPUser:        getEnv("SMTP_USER", ""),
@@ -55,6 +57,7 @@ func LoadTestConfig() (*Config, error) {
 		DatabaseURL:     getEnv("DB_URL", ""),
 		DatabaseTestURL: getEnv("TEST_DB_URL", ""),
 		OpenWeatherKey:  getEnv("OPENWEATHER_API_KEY", ""),
+		WeatherKey:      getEnv("WEATHER_API_KEY", ""),
 		SMTPHost:        getEnv("SMTP_HOST", ""),
 		SMTPPort:        smtpPort,
 		SMTPUser:        getEnv("SMTP_USER", ""),
