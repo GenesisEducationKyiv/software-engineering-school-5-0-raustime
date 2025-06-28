@@ -112,11 +112,12 @@ func (r *RedisCache) Get(ctx context.Context, city string) (contracts.WeatherDat
 	if err != nil {
 		if err == redis.Nil {
 			// Cache miss - return empty data with no error
+			cacheMisses.WithLabelValues(city).Inc()
 			return contracts.WeatherData{}, fmt.Errorf("cache miss for city: %s", city)
 		}
 		return contracts.WeatherData{}, fmt.Errorf("failed to get from cache: %w", err)
 	}
-
+	cacheHits.WithLabelValues(city).Inc()
 	// Deserialize JSON data
 	var data contracts.WeatherData
 	if err := json.Unmarshal([]byte(result), &data); err != nil {
@@ -145,7 +146,7 @@ func (r *RedisCache) Set(ctx context.Context, city string, data contracts.Weathe
 	if err := r.client.Set(ctx, key, jsonData, expiration).Err(); err != nil {
 		return fmt.Errorf("failed to set cache: %w", err)
 	}
-
+	cacheSets.WithLabelValues(city).Inc()
 	return nil
 }
 
@@ -156,7 +157,7 @@ func (r *RedisCache) Delete(ctx context.Context, city string) error {
 	if err := r.client.Del(ctx, key).Err(); err != nil {
 		return fmt.Errorf("failed to delete from cache: %w", err)
 	}
-
+	cacheDeletes.WithLabelValues(city).Inc()
 	return nil
 }
 

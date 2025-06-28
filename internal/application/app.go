@@ -10,14 +10,16 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/uptrace/bun"
+
+	"weatherapi/internal/cache"
 	"weatherapi/internal/config"
 	"weatherapi/internal/di"
 	"weatherapi/internal/jobs"
 	"weatherapi/internal/services/mailer_service"
 	"weatherapi/internal/services/subscription_service"
 	"weatherapi/internal/services/weather_service"
-
-	"github.com/uptrace/bun"
 )
 
 type App struct {
@@ -30,12 +32,21 @@ type App struct {
 	jobScheduler        jobs.Scheduler
 }
 
-// New створює новий екземпляр додатку
+// create new app instance
 func New() (*App, error) {
 	container, err := di.BuildContainer()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build container: %w", err)
 	}
+	// Register metrics
+	cache.RegisterCacheMetrics()
+
+	mux := http.NewServeMux()
+
+	mux.Handle("/metrics", promhttp.Handler())
+
+	// add API routing
+	mux.Handle("/api/", container.Router)
 
 	app := &App{
 		config:              container.Config,
@@ -46,7 +57,7 @@ func New() (*App, error) {
 		jobScheduler:        container.JobScheduler,
 		httpServer: &http.Server{
 			Addr:         ":" + container.Config.Port,
-			Handler:      http.HandlerFunc(container.Router.ServeHTTP),
+			Handler:      mux,
 			ReadTimeout:  15 * time.Second,
 			WriteTimeout: 15 * time.Second,
 			IdleTimeout:  60 * time.Second,
@@ -63,7 +74,7 @@ func (a *App) Run() error {
 	go func() {
 		log.Printf("Starting server on %s (env: %s)", a.httpServer.Addr, a.config.Environment)
 		if err := a.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("Server stopped with error: %v", err) // краще, ніж log.Fatal
+			log.Printf("Server stopped with error: %v", err)
 		}
 	}()
 
