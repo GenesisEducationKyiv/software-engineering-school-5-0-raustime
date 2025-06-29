@@ -1,5 +1,5 @@
 run:
-  timeout: 5m
+  timeout: 10m
   tests: true
   modules-download-mode: readonly
   issues-exit-code: 1
@@ -26,7 +26,7 @@ linters-settings:
 issues:
   exclude-rules:
     # Exclude some linters from running on tests files
-    - path: _test\.go
+    - path: .*_test\.go
       linters:
         - gocyclo
         - errcheck

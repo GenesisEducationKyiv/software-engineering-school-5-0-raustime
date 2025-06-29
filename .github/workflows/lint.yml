@@ -31,4 +31,4 @@ jobs:
         with:
           version: v1.59.0
           skip-cache: true
-          args: --timeout=5m --exclude="undefined.*mock"
+          args: --timeout=10m --exclude="undefined.*mock"
