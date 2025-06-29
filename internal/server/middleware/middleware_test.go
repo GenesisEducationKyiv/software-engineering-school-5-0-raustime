@@ -7,7 +7,7 @@ import (
 )
 
 func TestChain(t *testing.T) {
-	// Create test middlewares
+	// Create test middlewares.
 	middleware1 := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("X-Middleware-1", "applied")
@@ -22,7 +22,7 @@ func TestChain(t *testing.T) {
 		})
 	}
 
-	// Create base handler
+	// Create base handler.
 	baseHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if _, err := w.Write([]byte("OK")); err != nil {
@@ -30,7 +30,7 @@ func TestChain(t *testing.T) {
 		}
 	})
 
-	// Chain middlewares
+	// Chain middlewares.
 	handler := Chain(baseHandler, middleware1, middleware2)
 
 	// Test request
@@ -39,7 +39,7 @@ func TestChain(t *testing.T) {
 
 	handler.ServeHTTP(w, req)
 
-	// Assert that both middlewares were applied
+	// Assert that both middlewares were applied.
 	if w.Header().Get("X-Middleware-1") != "applied" {
 		t.Error("Middleware 1 was not applied")
 	}
@@ -192,18 +192,18 @@ func TestLoggingWriter(t *testing.T) {
 	w := httptest.NewRecorder()
 	lw := &loggingWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
-	// Test default status code
+	// Test default status code.
 	if lw.statusCode != http.StatusOK {
 		t.Errorf("expected default status code 200, got %d", lw.statusCode)
 	}
 
-	// Test WriteHeader
+	// Test WriteHeader.
 	lw.WriteHeader(http.StatusNotFound)
 	if lw.statusCode != http.StatusNotFound {
 		t.Errorf("expected status code 404, got %d", lw.statusCode)
 	}
 
-	// Test that status code is written to underlying ResponseWriter
+	// Test that status code is written to underlying ResponseWriter.
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected underlying status code 404, got %d", w.Code)
 	}

@@ -2,25 +2,26 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"weatherapi/internal/apierrors"
 	"weatherapi/internal/contracts"
 	"weatherapi/internal/services/weather_service"
 )
 
-// WeatherHandler handles weather-related requests
+// WeatherHandler handles weather-related requests.
 type WeatherHandler struct {
 	weatherService weather_service.WeatherService
 }
 
-// NewWeatherHandler creates a new weather handler
+// NewWeatherHandler creates a new weather handler.
 func NewWeatherHandler(weatherService weather_service.WeatherService) WeatherHandler {
 	return WeatherHandler{
 		weatherService: weatherService,
 	}
 }
 
-// GetWeather handles weather requests
+// GetWeather handles weather requests.
 func (h WeatherHandler) GetWeather(w http.ResponseWriter, r *http.Request) { // value receiver
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -35,15 +36,14 @@ func (h WeatherHandler) GetWeather(w http.ResponseWriter, r *http.Request) { // 
 
 	weather, err := h.weatherService.GetWeather(r.Context(), city)
 	if err != nil {
-		switch err {
-		case apierrors.ErrCityNotFound:
+		switch {
+		case errors.Is(err, apierrors.ErrCityNotFound):
 			http.Error(w, "City not found", http.StatusNotFound)
 		default:
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 		}
 		return
 	}
-
 	response := contracts.WeatherData{
 		Temperature: weather.Temperature,
 		Humidity:    weather.Humidity,

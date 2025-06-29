@@ -15,7 +15,7 @@ import (
 func TestOpenWeatherAdapter_CityNotFound(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintln(w, `{"cod":"404","message":"city not found"}`)
+		_, _ = fmt.Fprintln(w, `{"cod":"404","message":"city not found"}`)
 	}))
 	defer mockServer.Close()
 
@@ -45,7 +45,7 @@ func TestOpenWeatherAdapter_Success(t *testing.T) {
 
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, mockResponse)
+		_, _ = fmt.Fprintln(w, mockResponse)
 	}))
 	defer mockServer.Close()
 
@@ -73,7 +73,7 @@ func TestOpenWeatherAdapter_Success(t *testing.T) {
 func TestOpenWeatherAdapter_InvalidJSON(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, `invalid-json`)
+		_, _ = fmt.Fprintln(w, `invalid-json`)
 	}))
 	defer mockServer.Close()
 

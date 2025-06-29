@@ -37,10 +37,10 @@ func (l *FileWeatherLogger) LogResponse(provider string, data contracts.WeatherD
 	logJSON, _ := json.Marshal(logEntry)
 	logMessage := string(logJSON)
 
-	// Log to file
+	// Log to file.
 	l.logToFile(logMessage)
 
-	// Also log to console for debugging
+	// Also log to console for debugging.
 	log.Printf("%s - Response: %s", provider, logMessage)
 }
 
@@ -50,14 +50,14 @@ func (l *FileWeatherLogger) logToFile(logMessage string) {
 		log.Printf("Failed to open log file: %v", err)
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
-	if _, err := file.WriteString(fmt.Sprintf("%s\n", logMessage)); err != nil {
+	if _, err := fmt.Fprintf(file, "%s\n", logMessage); err != nil {
 		log.Printf("Failed to write to log file: %v", err)
 	}
 }
 
-// MockLogger для тестування
+// MockLogger для тестування.
 type MockLogger struct {
 	LoggedResponses []LogEntry
 }
@@ -81,11 +81,11 @@ func (m *MockLogger) LogResponse(provider string, data contracts.WeatherData, er
 		Error:    err,
 	})
 
-	// Optional: also log to console for debugging in tests
+	// Optional: also log to console for debugging in tests.
 	log.Printf("[MOCK] %s - Success: %t", provider, err == nil)
 }
 
-// Helper methods for test assertions
+// Helper methods for test assertions.
 func (m *MockLogger) GetLogCount() int {
 	return len(m.LoggedResponses)
 }

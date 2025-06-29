@@ -6,14 +6,14 @@ import (
 	"weatherapi/internal/contracts"
 )
 
-// WeatherHandler defines the interface for weather handlers in the chain
+// WeatherHandler defines the interface for weather handlers in the chain.
 type WeatherHandler interface {
 	SetNext(handler WeatherHandler) WeatherHandler
 	Handle(ctx context.Context, city string) (contracts.WeatherData, error)
 	GetProviderName() string
 }
 
-// BaseWeatherHandler provides common functionality for all handlers
+// BaseWeatherHandler provides common functionality for all handlers.
 type BaseWeatherHandler struct {
 	next WeatherHandler
 	api  WeatherAPIProvider
@@ -58,7 +58,7 @@ func (h *BaseWeatherHandler) Handle(ctx context.Context, city string) (contracts
 	return data, nil
 }
 
-// WeatherChain manages the chain of weather providers
+// WeatherChain manages the chain of weather providers.
 type WeatherChain struct {
 	firstHandler WeatherHandler
 	logger       WeatherLogger
@@ -87,7 +87,7 @@ func (c *WeatherChain) GetWeather(ctx context.Context, city string) (contracts.W
 		return contracts.WeatherData{}, fmt.Errorf("no weather providers configured")
 	}
 
-	// Insert logger in context using a custom key type
+	// Insert logger in context using a custom key type.
 	ctx = context.WithValue(ctx, weatherLoggerKey, c.logger)
 
 	return c.firstHandler.Handle(ctx, city)

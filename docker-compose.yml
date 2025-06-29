@@ -14,6 +14,11 @@ services:
     ports:
       - '5432:5432'
     restart: unless-stopped
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
 
   api:
     build: .
@@ -26,6 +31,11 @@ services:
       - PGPASSWORD=${PGPASSWORD}
       - PGHOST=db
       - PGPORT=5432
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_DB=${REDIS_DB}
+      - REDIS_POOL_SIZE=${REDIS_POOL_SIZE}
+      - REDIS_TIMEOUT_SECONDS=${REDIS_TIMEOUT_SECONDS}
     working_dir: /app
     entrypoint: ["/app/wait-for-postgres.sh"]
     command: ["./app"]
@@ -34,6 +44,7 @@ services:
     restart: unless-stopped
     depends_on:
       - db
+      - redis
 
   test-runner-unit:
     build: .
@@ -47,12 +58,18 @@ services:
       - PGPASSWORD=${PGPASSWORD}
       - PGHOST=db
       - PGPORT=5432
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_DB=${REDIS_DB}
+      - REDIS_POOL_SIZE=${REDIS_POOL_SIZE}
+      - REDIS_TIMEOUT_SECONDS=${REDIS_TIMEOUT_SECONDS}
       - BUNDEBUG=1
     working_dir: /app
     entrypoint: ["/app/wait-for-postgres.sh"]
     command: ["make", "test-unit"]
     depends_on:
       - db
+      - redis
   
   test-runner-integration:
     build: .
@@ -66,12 +83,18 @@ services:
       - PGPASSWORD=${PGPASSWORD}
       - PGHOST=db
       - PGPORT=5432
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_DB=${REDIS_DB}
+      - REDIS_POOL_SIZE=${REDIS_POOL_SIZE}
+      - REDIS_TIMEOUT_SECONDS=${REDIS_TIMEOUT_SECONDS}
       - BUNDEBUG=1
     working_dir: /app
     entrypoint: ["/app/wait-for-postgres.sh"]
     command: ["make", "test-integration"]
     depends_on:
       - db
+      - redis
 
   test-runner-e2e:
     build:
@@ -82,6 +105,7 @@ services:
     depends_on:
       - api
       - db
+      - redis
     #working_dir: /app
     #entrypoint: ["/app/wait-for-postgres.sh"]
     #command: ["make", "test-e2e"]

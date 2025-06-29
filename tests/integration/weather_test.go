@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -35,11 +36,17 @@ func TestGetWeather(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			url := testServer.URL + "/api/weather" + tt.queryParams
-			resp, err := http.Get(url)
+			req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
+			if err != nil {
+				t.Fatalf("Failed to create request: %v", err)
+			}
+
+			client := &http.Client{}
+			resp, err := client.Do(req)
 			if err != nil {
 				t.Fatalf("Failed to make request: %v", err)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			bodyBytes, err := io.ReadAll(resp.Body)
 			if err != nil {

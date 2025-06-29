@@ -16,7 +16,7 @@ import (
 func TestWeatherAPIAdapter_CityNotFound(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"error":{"code":1006,"message":"No matching location found."}}`))
+		_, _ = w.Write([]byte(`{"error":{"code":1006,"message":"No matching location found."}}`))
 	}))
 	defer mockServer.Close()
 
@@ -48,17 +48,13 @@ func TestWeatherAPIAdapter_Success(t *testing.T) {
 	}`
 
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, mockResponse)
+		_, _ = w.Write([]byte(mockResponse))
 	}))
 	defer mockServer.Close()
 
 	adapter, err := adapters.NewWeatherAPIAdapter("fake-key")
-
-	if err != nil {
-		t.Fatalf("Failed to create adapter: %v", err)
-	}
-
 	if err != nil {
 		t.Fatalf("Failed to create adapter: %v", err)
 	}
@@ -81,7 +77,7 @@ func TestWeatherAPIAdapter_Success(t *testing.T) {
 func TestWeatherAPIAdapter_InvalidJSON(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, `not-json`)
+		_, _ = fmt.Fprintln(w, `not-json`)
 	}))
 	defer mockServer.Close()
 
@@ -107,7 +103,7 @@ func TestWeatherAPIAdapter_InvalidJSON(t *testing.T) {
 func TestWeatherAPIAdapter_EmptyResponse(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(``))
+		_, _ = w.Write([]byte(``))
 	}))
 	defer mockServer.Close()
 

@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// MockMailerService — мок реалізації MailerServiceProvider
+// MockMailerService — мок реалізації MailerServiceProvider.
 type MockMailerService struct{}
 
 func (m *MockMailerService) SendConfirmationEmail(ctx context.Context, email, token string) error {
@@ -29,11 +29,11 @@ func (m *MockMailerService) SendWeatherEmail(ctx context.Context, email, city st
 
 func TestSubscriptionFlow(t *testing.T) {
 
-	// Change to project root
+	// Change to project root.
 	originalDir, _ := os.Getwd()
-	os.Chdir("../..") // Go up two levels: /app/tests/integration -> /app
+	_ = os.Chdir("../..")
 	defer func() {
-		os.Chdir(originalDir) // Restore original directory
+		_ = os.Chdir(originalDir) // Restore original directory.
 		cleanupTestData()
 	}()
 
@@ -49,14 +49,19 @@ func TestSubscriptionFlow(t *testing.T) {
 		}
 		jsonData, _ := json.Marshal(payload)
 
-		resp, err := http.Post(testServer.URL+"/api/subscribe", "application/json", bytes.NewBuffer(jsonData))
+		req, err := http.NewRequestWithContext(context.Background(), "POST", testServer.URL+"/api/subscribe", bytes.NewBuffer(jsonData))
 		assert.NoError(t, err)
-		defer resp.Body.Close()
+		req.Header.Set("Content-Type", "application/json")
 
-		// Just check the status code - no JSON response expected
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		defer func() { _ = resp.Body.Close() }()
+
+		// Just check the status code - no JSON response expected.
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-		// Optionally verify the subscription was created in the database
+		// Optionally verify the subscription was created in the database.
 		count, err := container.DB.NewSelect().
 			Model((*models.Subscription)(nil)).
 			Where("email = ?", email).
@@ -65,7 +70,7 @@ func TestSubscriptionFlow(t *testing.T) {
 		assert.Equal(t, 1, count, "Subscription should be created in database")
 	})
 
-	// 2. Отримання токену з БД
+	// 2. Отримання токену з БД.
 	var token string
 	err := container.DB.NewSelect().
 		Model((*models.Subscription)(nil)).
@@ -75,16 +80,20 @@ func TestSubscriptionFlow(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
 
-	// 3. Підтвердження підписки
+	// 3. Підтвердження підписки.
 	t.Run("Confirm", func(t *testing.T) {
-		resp, err := http.Get(testServer.URL + "/api/confirm/" + token)
+		req, err := http.NewRequestWithContext(context.Background(), "GET", testServer.URL+"/api/confirm/"+token, nil)
 		assert.NoError(t, err)
-		defer resp.Body.Close()
 
-		// Just check the status code - no JSON response expected
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		defer func() { _ = resp.Body.Close() }()
+
+		// Just check the status code - no JSON response expected.
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-		// Verify the subscription is confirmed in the database
+		// Verify the subscription is confirmed in the database.
 		var subscription models.Subscription
 		err = container.DB.NewSelect().
 			Model(&subscription).
@@ -95,16 +104,20 @@ func TestSubscriptionFlow(t *testing.T) {
 		assert.True(t, subscription.Confirmed)
 	})
 
-	// 4. Відписка
+	// 4. Відписка.
 	t.Run("Unsubscribe", func(t *testing.T) {
-		resp, err := http.Get(testServer.URL + "/api/unsubscribe/" + token)
+		req, err := http.NewRequestWithContext(context.Background(), "GET", testServer.URL+"/api/unsubscribe/"+token, nil)
 		assert.NoError(t, err)
-		defer resp.Body.Close()
 
-		// Just check the status code - no JSON response expected
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		defer func() { _ = resp.Body.Close() }()
+
+		// Just check the status code - no JSON response expected.
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-		// Verify the subscription is deleted from the database
+		// Verify the subscription is deleted from the database.
 		count, err := container.DB.NewSelect().
 			Model((*models.Subscription)(nil)).
 			Where("email = ?", email).
@@ -134,9 +147,15 @@ func TestInvalidSubscriptionRequests(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			jsonData, _ := json.Marshal(tt.payload)
-			resp, err := http.Post(testServer.URL+"/api/subscribe", "application/json", bytes.NewBuffer(jsonData))
+
+			req, err := http.NewRequestWithContext(context.Background(), "POST", testServer.URL+"/api/subscribe", bytes.NewBuffer(jsonData))
 			assert.NoError(t, err)
-			defer resp.Body.Close()
+			req.Header.Set("Content-Type", "application/json")
+
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			assert.NoError(t, err)
+			defer func() { _ = resp.Body.Close() }()
 
 			body, _ := io.ReadAll(resp.Body)
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode, "Response: %s", string(body))
