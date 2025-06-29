@@ -60,6 +60,7 @@ func CleanupTestDB(t *testing.T, db *bun.DB) {
 
 // cleanupTestDB performs the actual cleanup.
 func cleanupTestDB(t *testing.T, db *bun.DB) {
+	t.Helper()
 	ctx := context.Background()
 
 	// List of tables to truncate (add more as needed).

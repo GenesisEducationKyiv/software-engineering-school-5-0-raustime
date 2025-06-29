@@ -49,7 +49,12 @@ func TestSubscriptionFlow(t *testing.T) {
 		}
 		jsonData, _ := json.Marshal(payload)
 
-		resp, err := http.Post(testServer.URL+"/api/subscribe", "application/json", bytes.NewBuffer(jsonData))
+		req, err := http.NewRequestWithContext(context.Background(), "POST", testServer.URL+"/api/subscribe", bytes.NewBuffer(jsonData))
+		assert.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
 		assert.NoError(t, err)
 		defer func() { _ = resp.Body.Close() }()
 
@@ -77,7 +82,11 @@ func TestSubscriptionFlow(t *testing.T) {
 
 	// 3. Підтвердження підписки.
 	t.Run("Confirm", func(t *testing.T) {
-		resp, err := http.Get(testServer.URL + "/api/confirm/" + token)
+		req, err := http.NewRequestWithContext(context.Background(), "GET", testServer.URL+"/api/confirm/"+token, nil)
+		assert.NoError(t, err)
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
 		assert.NoError(t, err)
 		defer func() { _ = resp.Body.Close() }()
 
@@ -97,7 +106,11 @@ func TestSubscriptionFlow(t *testing.T) {
 
 	// 4. Відписка.
 	t.Run("Unsubscribe", func(t *testing.T) {
-		resp, err := http.Get(testServer.URL + "/api/unsubscribe/" + token)
+		req, err := http.NewRequestWithContext(context.Background(), "GET", testServer.URL+"/api/unsubscribe/"+token, nil)
+		assert.NoError(t, err)
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
 		assert.NoError(t, err)
 		defer func() { _ = resp.Body.Close() }()
 
@@ -134,7 +147,13 @@ func TestInvalidSubscriptionRequests(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			jsonData, _ := json.Marshal(tt.payload)
-			resp, err := http.Post(testServer.URL+"/api/subscribe", "application/json", bytes.NewBuffer(jsonData))
+
+			req, err := http.NewRequestWithContext(context.Background(), "POST", testServer.URL+"/api/subscribe", bytes.NewBuffer(jsonData))
+			assert.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+
+			client := &http.Client{}
+			resp, err := client.Do(req)
 			assert.NoError(t, err)
 			defer func() { _ = resp.Body.Close() }()
 

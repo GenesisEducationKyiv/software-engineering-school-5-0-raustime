@@ -28,14 +28,6 @@ type weatherService interface {
 	GetWeather(ctx context.Context, city string) (contracts.WeatherData, error)
 }
 
-// schedulerProvider визначає інтерфейс для планувальника задач.
-type jobSchedulerProvider interface {
-	Start()
-	Stop()
-	weatherNotificationLoop()
-	sendWeatherUpdates(frequency string)
-}
-
 type Scheduler struct {
 	subscriptionService subscriptionService
 	mailerService       mailerService
