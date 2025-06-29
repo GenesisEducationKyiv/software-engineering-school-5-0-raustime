@@ -2,6 +2,7 @@ run:
   timeout: 5m
   tests: true
   modules-download-mode: readonly
+  issues-exit-code: 1
 
 linters:
   enable:
