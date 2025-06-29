@@ -44,9 +44,9 @@ jobs:
         uses: golangci/golangci-lint-action@v4
         with:
           # Використовуйте latest або нову версію
-          version: latest
+          version: v2.2.0
           # Видаліть --format, GitHub Action автоматично налаштує формат
-          args: --timeout=15m --exclude="undefined.*mock"
+          args: --timeout=15m
           # Додаткові опції для стабільності
           only-new-issues: false
           skip-cache: false
