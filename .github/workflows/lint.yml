@@ -7,7 +7,7 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    timeout-minutes: 10 # Обмеження тривалості job'у для запобігання зависання
+    timeout-minutes: 15 # Збільшено таймаут
 
     steps:
       - name: Checkout code
@@ -43,5 +43,10 @@ jobs:
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v4
         with:
-          version: v2.2.0
-          args: --timeout=15m --exclude="undefined.*mock" --format=colored-line-number
+          # Використовуйте latest або нову версію
+          version: latest
+          # Видаліть --format, GitHub Action автоматично налаштує формат
+          args: --timeout=15m --exclude="undefined.*mock"
+          # Додаткові опції для стабільності
+          only-new-issues: false
+          skip-cache: false
