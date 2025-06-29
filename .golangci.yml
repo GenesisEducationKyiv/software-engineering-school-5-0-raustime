@@ -35,8 +35,6 @@ linters:
     revive:
       severity: warning
     tagliatelle:
-    case:
-      use-field-name: false
       rules:
         json: snake
         yaml: camel
