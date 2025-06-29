@@ -44,4 +44,4 @@ jobs:
         uses: golangci/golangci-lint-action@v4
         with:
           version: v2.2.0
-          args: --timeout=15m --exclude="undefined.*mock"
+          args: --timeout=15m --exclude="undefined.*mock" --format=colored-line-number
