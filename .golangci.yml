@@ -19,7 +19,6 @@ linters:
     - nolintlint        # Checks for incorrect //nolint usage [auto-fix]
     - godot             # Enforces that comments end with a period [auto-fix]
     - nakedret          # Discourages naked return statements without names [auto-fix]
-    - tagliatelle       # Validates struct tag formatting, e.g., `json:"name,omitempty"`
 
     # Performance
     - prealloc          # Suggests slice preallocation when length is known [auto-fix]
@@ -33,10 +32,7 @@ linters:
 
   settings:
     revive:
-      severity: warning
-
-    tagliatelle: {}
-    
+      severity: warning    
   exclusions:
     generated: lax
     rules:
