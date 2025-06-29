@@ -13,6 +13,7 @@ linters:
     - ineffassign
     - misspell
     - revive
+    - staticcheck
   disable:
     - errcheck # Can be noisy in tests
 
