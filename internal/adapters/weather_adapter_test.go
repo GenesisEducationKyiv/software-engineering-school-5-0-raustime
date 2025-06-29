@@ -48,17 +48,13 @@ func TestWeatherAPIAdapter_Success(t *testing.T) {
 	}`
 
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = fmt.Fprintln(w, mockResponse)
+		_, _ = w.Write([]byte(mockResponse))
 	}))
 	defer mockServer.Close()
 
 	adapter, err := adapters.NewWeatherAPIAdapter("fake-key")
-
-	if err != nil {
-		t.Fatalf("Failed to create adapter: %v", err)
-	}
-
 	if err != nil {
 		t.Fatalf("Failed to create adapter: %v", err)
 	}
