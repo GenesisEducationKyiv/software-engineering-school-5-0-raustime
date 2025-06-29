@@ -70,7 +70,7 @@ func (a *WeatherAPIAdapter) FetchWeather(ctx context.Context, city string) (cont
 
 	var weatherResp struct {
 		Current struct {
-			TempC     float64 `json:"tempC"`
+			TempC     float64 `json:"temp_c"`
 			Humidity  float64 `json:"humidity"`
 			Condition struct {
 				Text string `json:"text"`
