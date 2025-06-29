@@ -59,8 +59,12 @@ func TestRedisCache_Integration(t *testing.T) {
 		Timeout:  5 * time.Second,
 	}
 
-	var cacheConfig cache.CacheConfig
-	cacheInstance, err := cache.NewRedisCache(redisConfig, cacheConfig)
+	cacheConfig := cache.CacheConfig{
+		DefaultExpiration: 1 * time.Minute,
+	}
+
+	mockMetrics := &MockMetrics{}
+	cacheInstance, err := cache.NewRedisCache(redisConfig, cacheConfig, mockMetrics)
 	if err != nil {
 		t.Fatalf("Failed to create cache: %v", err)
 	}
