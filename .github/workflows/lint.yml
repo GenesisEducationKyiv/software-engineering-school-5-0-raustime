@@ -43,6 +43,5 @@ jobs:
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v4
         with:
-          version: v1.59.0
-          skip-cache: true
-          args: --timeout=10m --exclude="undefined.*mock"
+          version: latest
+          args: --timeout=15m --exclude="undefined.*mock"
