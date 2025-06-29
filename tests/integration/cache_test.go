@@ -47,7 +47,7 @@ func TestRedisCache_Integration(t *testing.T) {
 	// Clean up before and after test
 	t.Cleanup(func() {
 		client.FlushDB(ctx)
-		client.Close()
+		_ = client.Close()
 	})
 
 	// Create cache instance
@@ -68,7 +68,7 @@ func TestRedisCache_Integration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create cache: %v", err)
 	}
-	defer cacheInstance.Close()
+	defer func() { _ = cacheInstance.Close() }()
 
 	// Test data
 	testCity := "Kyiv"

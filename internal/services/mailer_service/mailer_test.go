@@ -52,7 +52,7 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	// Очищаємо після тестів
-	os.RemoveAll(tmpDir)
+	_ = os.RemoveAll(tmpDir)
 
 	os.Exit(code)
 }

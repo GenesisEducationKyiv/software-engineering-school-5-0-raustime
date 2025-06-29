@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/mail"
@@ -39,10 +40,9 @@ func (h SubscriptionHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 
 	err := h.subscriptionService.Create(r.Context(), req.Email, req.City, req.Frequency)
 	if err != nil {
-		switch err {
-		case apierrors.ErrAlreadySubscribed:
+		if errors.Is(err, apierrors.ErrAlreadySubscribed) {
 			http.Error(w, "Email already subscribed", http.StatusConflict)
-		default:
+		} else {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 		}
 		return
@@ -60,10 +60,10 @@ func (h *SubscriptionHandler) Confirm(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.subscriptionService.Confirm(r.Context(), token); err != nil {
-		switch err {
-		case apierrors.ErrSubscriptionNotFound:
+		switch {
+		case errors.Is(err, apierrors.ErrSubscriptionNotFound):
 			http.Error(w, "Subscription not found", http.StatusNotFound)
-		case apierrors.ErrInvalidToken:
+		case errors.Is(err, apierrors.ErrInvalidToken):
 			http.Error(w, "Invalid token", http.StatusBadRequest)
 		default:
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -83,10 +83,10 @@ func (h *SubscriptionHandler) Unsubscribe(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := h.subscriptionService.Delete(r.Context(), token); err != nil {
-		switch err {
-		case apierrors.ErrSubscriptionNotFound:
+		switch {
+		case errors.Is(err, apierrors.ErrSubscriptionNotFound):
 			http.Error(w, "Subscription not found", http.StatusNotFound)
-		case apierrors.ErrInvalidToken:
+		case errors.Is(err, apierrors.ErrInvalidToken):
 			http.Error(w, "Invalid token", http.StatusBadRequest)
 		default:
 			http.Error(w, "Internal server error", http.StatusInternalServerError)

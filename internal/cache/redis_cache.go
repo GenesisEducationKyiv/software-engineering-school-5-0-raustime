@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -111,7 +112,7 @@ func (r *RedisCache) Get(ctx context.Context, city string) (contracts.WeatherDat
 	// Get data from Redis
 	result, err := r.client.Get(ctx, key).Result()
 	if err != nil {
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			// Cache miss - return empty data with no error
 			r.metrics.IncCacheMisses()
 			return contracts.WeatherData{}, fmt.Errorf("cache miss for city: %s", city)

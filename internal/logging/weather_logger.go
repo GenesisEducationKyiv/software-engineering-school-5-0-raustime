@@ -50,7 +50,7 @@ func (l *FileWeatherLogger) logToFile(logMessage string) {
 		log.Printf("Failed to open log file: %v", err)
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	if _, err := file.WriteString(fmt.Sprintf("%s\n", logMessage)); err != nil {
 		log.Printf("Failed to write to log file: %v", err)

@@ -31,9 +31,9 @@ func TestSubscriptionFlow(t *testing.T) {
 
 	// Change to project root
 	originalDir, _ := os.Getwd()
-	os.Chdir("../..") // Go up two levels: /app/tests/integration -> /app
+	_ = os.Chdir("../..")
 	defer func() {
-		os.Chdir(originalDir) // Restore original directory
+		_ = os.Chdir(originalDir) // Restore original directory
 		cleanupTestData()
 	}()
 
@@ -51,7 +51,7 @@ func TestSubscriptionFlow(t *testing.T) {
 
 		resp, err := http.Post(testServer.URL+"/api/subscribe", "application/json", bytes.NewBuffer(jsonData))
 		assert.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		// Just check the status code - no JSON response expected
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -79,7 +79,7 @@ func TestSubscriptionFlow(t *testing.T) {
 	t.Run("Confirm", func(t *testing.T) {
 		resp, err := http.Get(testServer.URL + "/api/confirm/" + token)
 		assert.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		// Just check the status code - no JSON response expected
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -99,7 +99,7 @@ func TestSubscriptionFlow(t *testing.T) {
 	t.Run("Unsubscribe", func(t *testing.T) {
 		resp, err := http.Get(testServer.URL + "/api/unsubscribe/" + token)
 		assert.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		// Just check the status code - no JSON response expected
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -136,7 +136,7 @@ func TestInvalidSubscriptionRequests(t *testing.T) {
 			jsonData, _ := json.Marshal(tt.payload)
 			resp, err := http.Post(testServer.URL+"/api/subscribe", "application/json", bytes.NewBuffer(jsonData))
 			assert.NoError(t, err)
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			body, _ := io.ReadAll(resp.Body)
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode, "Response: %s", string(body))

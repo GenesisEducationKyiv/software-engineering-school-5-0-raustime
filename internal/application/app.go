@@ -32,6 +32,7 @@ type App struct {
 }
 
 // create new app instance
+
 func New() (*App, error) {
 	container, err := di.BuildContainer()
 	if err != nil {
@@ -64,7 +65,8 @@ func New() (*App, error) {
 	return app, nil
 }
 
-// Run запускає додаток з graceful shutdown
+// Run запускає додаток з graceful shutdown.
+
 func (a *App) Run() error {
 	a.jobScheduler.Start()
 
@@ -112,7 +114,7 @@ func (a *App) Close(ctx context.Context) error {
 	if a.db != nil {
 		if dbErr := a.db.Close(); dbErr != nil {
 			if err != nil {
-				err = fmt.Errorf("%w; db close error: %v", err, dbErr)
+				err = fmt.Errorf("%w; db close error: %w", err, dbErr)
 			} else {
 				err = fmt.Errorf("db close error: %w", dbErr)
 			}

@@ -3,6 +3,7 @@ package migration
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -161,7 +162,7 @@ func (r *Runner) applyMigration(ctx context.Context, migration Migration) error 
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer func() {
-		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
 			log.Printf("tx rollback failed: %v", err)
 		}
 	}()

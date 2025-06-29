@@ -11,7 +11,8 @@ var (
 	ErrInvalidEmail           = errors.New("invalid email")
 	ErrInvalidCity            = errors.New("invalid city")
 	ErrInvalidFrequency       = errors.New("invalid frequency")
-	// // Cache-related errors
+	// Cache-related errors.
+
 	ErrCacheMiss        = errors.New("cache miss")
 	ErrCacheConnection  = errors.New("cache connection error")
 	ErrCacheTimeout     = errors.New("cache operation timeout")
