@@ -36,8 +36,9 @@ linters:
       severity: warning
     tagliatelle:
     case:
+      use-field-name: false
       rules:
-        json: snake  # Allow snake_case for JSON tags (for external APIs)
+        json: snake
         yaml: camel
         xml: camel
   exclusions:
