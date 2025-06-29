@@ -7,6 +7,7 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10 # Обмеження тривалості job'у для запобігання зависання
 
     steps:
       - name: Checkout code
@@ -16,6 +17,19 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.23"
+
+      - name: Print Go version
+        run: go version
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
       - name: Download dependencies
         run: go mod download
