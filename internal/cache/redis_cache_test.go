@@ -21,8 +21,7 @@ type MockRedis struct {
 
 func (m *MockRedis) Get(ctx context.Context, key string) *redis.StringCmd {
 	args := m.Called(ctx, key)
-	cmd := redis.NewStringResult(args.String(0), args.Error(1))
-	return cmd
+	return redis.NewStringResult(args.String(0), args.Error(1))
 }
 
 func (m *MockRedis) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd {
@@ -65,8 +64,9 @@ func (m *MockRedis) PoolStats() *redis.PoolStats {
 func TestRedisCache_SetAndGet(t *testing.T) {
 	mockRedis := new(MockRedis)
 	cache := &RedisCache{
-		client: mockRedis,
-		config: CacheConfig{DefaultExpiration: 10 * time.Minute},
+		client:  mockRedis,
+		config:  CacheConfig{DefaultExpiration: 10 * time.Minute},
+		metrics: NoopMetrics{},
 	}
 
 	city := "Kyiv"
@@ -79,7 +79,6 @@ func TestRedisCache_SetAndGet(t *testing.T) {
 	jsonData, _ := json.Marshal(data)
 	key := "weather:kyiv"
 
-	// SET: використовуємо MatchedBy для []byte
 	mockRedis.On(
 		"Set",
 		mock.Anything,
@@ -94,7 +93,6 @@ func TestRedisCache_SetAndGet(t *testing.T) {
 	err := cache.Set(context.Background(), city, data, 0)
 	assert.NoError(t, err)
 
-	// GET
 	mockRedis.On("Get", mock.Anything, key).Return(string(jsonData), nil)
 
 	got, err := cache.Get(context.Background(), city)
@@ -104,7 +102,11 @@ func TestRedisCache_SetAndGet(t *testing.T) {
 
 func TestRedisCache_Get_NotFound(t *testing.T) {
 	mockRedis := new(MockRedis)
-	cache := &RedisCache{client: mockRedis}
+	cache := &RedisCache{
+		client:  mockRedis,
+		config:  CacheConfig{},
+		metrics: NoopMetrics{},
+	}
 
 	key := "weather:unknown"
 	mockRedis.On("Get", mock.Anything, key).Return("", redis.Nil)
@@ -116,7 +118,11 @@ func TestRedisCache_Get_NotFound(t *testing.T) {
 
 func TestRedisCache_Exists(t *testing.T) {
 	mockRedis := new(MockRedis)
-	cache := &RedisCache{client: mockRedis}
+	cache := &RedisCache{
+		client:  mockRedis,
+		config:  CacheConfig{},
+		metrics: NoopMetrics{},
+	}
 
 	key := "weather:kyiv"
 	mockRedis.On("Exists", mock.Anything, []string{key}).Return(1, nil)
@@ -128,7 +134,11 @@ func TestRedisCache_Exists(t *testing.T) {
 
 func TestRedisCache_Delete(t *testing.T) {
 	mockRedis := new(MockRedis)
-	cache := &RedisCache{client: mockRedis}
+	cache := &RedisCache{
+		client:  mockRedis,
+		config:  CacheConfig{},
+		metrics: NoopMetrics{},
+	}
 
 	key := "weather:kyiv"
 	mockRedis.On("Del", mock.Anything, []string{key}).Return(1, nil)
@@ -139,7 +149,11 @@ func TestRedisCache_Delete(t *testing.T) {
 
 func TestRedisCache_Health(t *testing.T) {
 	mockRedis := new(MockRedis)
-	cache := &RedisCache{client: mockRedis}
+	cache := &RedisCache{
+		client:  mockRedis,
+		config:  CacheConfig{},
+		metrics: NoopMetrics{},
+	}
 
 	mockRedis.On("Ping", mock.Anything).Return(nil)
 
