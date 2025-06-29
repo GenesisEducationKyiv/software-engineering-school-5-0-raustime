@@ -37,10 +37,10 @@ func (l *FileWeatherLogger) LogResponse(provider string, data contracts.WeatherD
 	logJSON, _ := json.Marshal(logEntry)
 	logMessage := string(logJSON)
 
-	// Log to file
+	// Log to file.
 	l.logToFile(logMessage)
 
-	// Also log to console for debugging
+	// Also log to console for debugging.
 	log.Printf("%s - Response: %s", provider, logMessage)
 }
 

@@ -10,12 +10,12 @@ import (
 	"weatherapi/internal/services/weather_service/chain"
 )
 
-// WeatherServiceProvider defines the interface for weather service
+// WeatherServiceProvider defines the interface for weather service.
 type WeatherServiceProvider interface {
 	GetWeather(ctx context.Context, city string) (contracts.WeatherData, error)
 }
 
-// WeatherService implements WeatherServiceProvider using Chain of Responsibility
+// WeatherService implements WeatherServiceProvider using Chain of Responsibility.
 type WeatherService struct {
 	weatherChain    *chain.WeatherChain
 	cache           cache.WeatherCache
@@ -23,7 +23,7 @@ type WeatherService struct {
 	enableCaching   bool
 }
 
-// NewWeatherService creates a new weatherService with the provided chain
+// NewWeatherService creates a new weatherService with the provided chain.
 func NewWeatherService(
 	weatherChain *chain.WeatherChain,
 	cache cache.WeatherCache,
@@ -38,28 +38,27 @@ func NewWeatherService(
 	}
 }
 
-// GetWeather retrieves weather data for a city using the chain of providers
+// GetWeather retrieves weather data for a city using the chain of providers.
 func (s WeatherService) GetWeather(ctx context.Context, city string) (contracts.WeatherData, error) {
 	// Validate input
 	if city == "" {
 		return contracts.WeatherData{}, api_errors.ErrInvalidCity
 	}
 
-	// Try getting from cache
+	// Try getting from cache.
 	if s.enableCaching {
 		if cachedData, err := s.cache.Get(ctx, city); err == nil {
 			return cachedData, nil
 		}
-		// TODO логування пропущеного кешу
 	}
 
-	// Use the chain to get weather data
+	// Use the chain to get weather data.
 	data, err := s.weatherChain.GetWeather(ctx, city)
 	if err != nil {
 		return contracts.WeatherData{}, err
 	}
 
-	// Store in cache
+	// Store in cache.
 	if s.enableCaching {
 		_ = s.cache.Set(ctx, city, data, s.cacheExpiration)
 	}

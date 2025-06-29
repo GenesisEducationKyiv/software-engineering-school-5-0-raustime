@@ -26,7 +26,7 @@ func (m *MockMetrics) IncCacheDeletes() {
 	atomic.AddInt32(&m.Deletes, 1)
 }
 
-// Reset очищає всі лічильники (опціонально для багаторазового використання в одному тесті)
+// Reset очищає всі лічильники (опціонально для багаторазового використання в одному тесті).
 func (m *MockMetrics) Reset() {
 	atomic.StoreInt32(&m.Hits, 0)
 	atomic.StoreInt32(&m.Misses, 0)

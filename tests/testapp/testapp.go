@@ -55,11 +55,11 @@ func Initialize() *TestContainer {
 		log.Fatalf("❌ Failed to init test DB: %v", err)
 	}
 
-	// Skip migrations if SKIP_MIGRATIONS is set
+	// Skip migrations if SKIP_MIGRATIONS is set.
 	if os.Getenv("SKIP_MIGRATIONS") == "true" {
 		log.Println("⚠️ Skipping migrations as requested")
 	} else {
-		// Run test migrations from resolved absolute path
+		// Run test migrations from resolved absolute path.
 		migrationsDir := resolveMigrationsPath()
 		log.Printf("📁 Using migrations from: %s", migrationsDir)
 
@@ -71,7 +71,7 @@ func Initialize() *TestContainer {
 
 	subscriptionRepo := repositories.NewSubscriptionRepo(db)
 
-	// Setup weather service with chain of responsibility
+	// Setup weather service with chain of responsibility.
 	weatherService, err := setupWeatherService(cfg)
 
 	if err != nil {
@@ -94,12 +94,12 @@ func Initialize() *TestContainer {
 	}
 }
 
-// setupWeatherService creates a weather service with chain of responsibility
+// setupWeatherService creates a weather service with chain of responsibility.
 func setupWeatherService(cfg *config.Config) (weather_service.WeatherServiceProvider, error) {
 	// Create logger for tests
 	logger := logging.NewFileWeatherLogger("test_weather_providers.log")
 
-	// Create adapters with config
+	// Create adapters with config.
 	openWeatherAdapter, err := adapters.NewOpenWeatherAdapter(cfg.OpenWeatherKey)
 	if err != nil {
 		var emptyProvider weather_service.WeatherServiceProvider
@@ -110,42 +110,42 @@ func setupWeatherService(cfg *config.Config) (weather_service.WeatherServiceProv
 		var emptyProvider weather_service.WeatherServiceProvider
 		return emptyProvider, fmt.Errorf("failed to create adapter: %w", err)
 	}
-	// Create handlers for the chain with logger
+	// Create handlers for the chain with logger.
 	openWeatherHandler := chain.NewBaseWeatherHandler(&openWeatherAdapter, "openweathermap.org")
 	weatherAPIHandler := chain.NewBaseWeatherHandler(&weatherAPIAdapter, "weatherapi.com")
 
-	// Set up the chain: OpenWeather -> WeatherAPI
-	// In tests, we might want to use a simpler chain or mock
+	// Set up the chain: OpenWeather -> WeatherAPI.
+	// In tests, we might want to use a simpler chain or mock.
 	openWeatherHandler.SetNext(weatherAPIHandler)
 
 	// Create and configure the chain
 	weatherChain := chain.NewWeatherChain(logger)
 	weatherChain.SetFirstHandler(openWeatherHandler)
 
-	cache := cache.NoopWeatherCache{} // Use a no-op cache
-	cacheDuration := 5 * 60           // 5 minutes in seconds
+	cache := cache.NoopWeatherCache{} // Use a no-op cache.
+	cacheDuration := 5 * 60           // 5 minutes in seconds.
 	enableCache := false
 
 	return weather_service.NewWeatherService(weatherChain, cache, time.Duration(cacheDuration)*time.Second, enableCache), nil
 }
 
-// Alternative setup for tests that need more control
+// Alternative setup for tests that need more control.
 func setupWeatherServiceForTests(cfg *config.Config, useOnlyPrimary bool) (weather_service.WeatherServiceProvider, error) {
-	// Create logger for tests
+	// Create logger for tests.
 	logger := logging.NewFileWeatherLogger("test_weather_providers.log")
 
-	// Create adapters with config
+	// Create adapters with config.
 	openWeatherAdapter, err := adapters.NewOpenWeatherAdapter(cfg.OpenWeatherKey)
 	if err != nil {
 		var emptyProvider weather_service.WeatherServiceProvider
 		return emptyProvider, fmt.Errorf("failed to create adapter: %w", err)
 	}
 
-	// Create handler for the chain with logger
+	// Create handler for the chain with logger.
 	openWeatherHandler := chain.NewBaseWeatherHandler(&openWeatherAdapter, "openweathermap.org")
 
 	if !useOnlyPrimary {
-		// Add secondary provider for full chain
+		// Add secondary provider for full chain.
 		weatherAPIAdapter, err := adapters.NewWeatherAPIAdapter(cfg.WeatherKey)
 		if err != nil {
 			var emptyProvider weather_service.WeatherServiceProvider
@@ -155,19 +155,19 @@ func setupWeatherServiceForTests(cfg *config.Config, useOnlyPrimary bool) (weath
 		openWeatherHandler.SetNext(weatherAPIHandler)
 	}
 
-	// Create and configure the chain
+	// Create and configure the chain.
 	weatherChain := chain.NewWeatherChain(logger)
 	weatherChain.SetFirstHandler(openWeatherHandler)
 
-	// Create weather service with the chain
-	cache := cache.NoopWeatherCache{} // Use a no-op cache
-	cacheDuration := 5 * 60           // 5 minutes in seconds
+	// Create weather service with the chain.
+	cache := cache.NoopWeatherCache{} // Use a no-op cache.
+	cacheDuration := 5 * 60           // 5 minutes in seconds.
 	enableCache := false
 	return weather_service.NewWeatherService(weatherChain, cache, time.Duration(cacheDuration)*time.Second, enableCache), nil
 }
 
-// InitializeWithSingleProvider creates a test container with only one weather provider
-// Useful for tests that need to control which provider is used
+// InitializeWithSingleProvider creates a test container with only one weather provider.
+// Useful for tests that need to control which provider is used.
 func InitializeWithSingleProvider() *TestContainer {
 	_ = godotenv.Load(".env.test")
 
@@ -184,7 +184,7 @@ func InitializeWithSingleProvider() *TestContainer {
 		log.Fatalf("❌ Failed to init test DB: %v", err)
 	}
 
-	// Skip migrations if SKIP_MIGRATIONS is set
+	// Skip migrations if SKIP_MIGRATIONS is set.
 	if os.Getenv("SKIP_MIGRATIONS") == "true" {
 		log.Println("⚠️ Skipping migrations as requested")
 	} else {
@@ -199,7 +199,7 @@ func InitializeWithSingleProvider() *TestContainer {
 
 	subscriptionRepo := repositories.NewSubscriptionRepo(db)
 
-	// Setup weather service with single provider for testing
+	// Setup weather service with single provider for testing.
 	weatherService, err := setupWeatherServiceForTests(cfg, true)
 	if err != nil {
 		log.Fatalf("❌ Failed to setup weather service: %v", err)
@@ -221,7 +221,7 @@ func InitializeWithSingleProvider() *TestContainer {
 	}
 }
 
-// InitializeWithMockLogger creates a test container with mock logger for testing
+// InitializeWithMockLogger creates a test container with mock logger for testing.
 func InitializeWithMockLogger() *TestContainer {
 	_ = godotenv.Load(".env.test")
 
@@ -238,7 +238,7 @@ func InitializeWithMockLogger() *TestContainer {
 		log.Fatalf("❌ Failed to init test DB: %v", err)
 	}
 
-	// Skip migrations if SKIP_MIGRATIONS is set
+	// Skip migrations if SKIP_MIGRATIONS is set.
 	if os.Getenv("SKIP_MIGRATIONS") == "true" {
 		log.Println("⚠️ Skipping migrations as requested")
 	} else {
@@ -253,7 +253,7 @@ func InitializeWithMockLogger() *TestContainer {
 
 	subscriptionRepo := repositories.NewSubscriptionRepo(db)
 
-	// Setup weather service with mock logger
+	// Setup weather service with mock logger.
 	weatherService, err := setupWeatherServiceWithMockLogger(cfg)
 	if err != nil {
 		log.Fatalf("❌ Failed to setup weather service: %v", err)
@@ -275,12 +275,12 @@ func InitializeWithMockLogger() *TestContainer {
 	}
 }
 
-// setupWeatherServiceWithMockLogger creates weather service with mock logger for testing
+// setupWeatherServiceWithMockLogger creates weather service with mock logger for testing.
 func setupWeatherServiceWithMockLogger(cfg *config.Config) (weather_service.WeatherServiceProvider, error) {
-	// Create mock logger for testing
+	// Create mock logger for testing.
 	mockLogger := logging.NewMockLogger()
 
-	// Create adapters with config
+	// Create adapters with config.
 	openWeatherAdapter, err := adapters.NewOpenWeatherAdapter(cfg.OpenWeatherKey)
 	if err != nil {
 		var emptyProvider weather_service.WeatherServiceProvider
@@ -291,20 +291,20 @@ func setupWeatherServiceWithMockLogger(cfg *config.Config) (weather_service.Weat
 		var emptyProvider weather_service.WeatherServiceProvider
 		return emptyProvider, fmt.Errorf("failed to create WeatherAPI adapter: %w", err)
 	}
-	// Create handlers for the chain with mock logger
+	// Create handlers for the chain with mock logger.
 	openWeatherHandler := chain.NewBaseWeatherHandler(&openWeatherAdapter, "openweathermap.org")
 	weatherAPIHandler := chain.NewBaseWeatherHandler(&weatherAPIAdapter, "weatherapi.com")
 
-	// Set up the chain: OpenWeather -> WeatherAPI
+	// Set up the chain: OpenWeather -> WeatherAPI.
 	openWeatherHandler.SetNext(weatherAPIHandler)
 
-	// Create and configure the chain
+	// Create and configure the chain.
 	weatherChain := chain.NewWeatherChain(mockLogger)
 	weatherChain.SetFirstHandler(openWeatherHandler)
 
-	// Create weather service with the chain
-	cache := cache.NoopWeatherCache{} // Use a no-op cache for tests
-	cacheDuration := 5 * 60           // 5 minutes in seconds
+	// Create weather service with the chain.
+	cache := cache.NoopWeatherCache{} // Use a no-op cache for tests.
+	cacheDuration := 5 * 60           // 5 minutes in seconds.
 	enableCache := false
 	return weather_service.NewWeatherService(weatherChain, cache, time.Duration(cacheDuration)*time.Second, enableCache), nil
 }
@@ -326,11 +326,11 @@ func initDatabase(cfg *config.Config) (*bun.DB, error) {
 	return db, nil
 }
 
-// resolveMigrationsPath detects the full path to the `migrations` directory
+// resolveMigrationsPath detects the full path to the `migrations` directory.
 func resolveMigrationsPath() string {
 	log.Printf("🔍 Starting migrations path resolution...")
 
-	// First, try environment variable (useful for Docker)
+	// First, try environment variable (useful for Docker).
 	if migrationsPath := os.Getenv("MIGRATIONS_PATH"); migrationsPath != "" {
 		log.Printf("🔍 Trying env MIGRATIONS_PATH: %s", migrationsPath)
 		if _, err := os.Stat(migrationsPath); err == nil {
@@ -341,7 +341,7 @@ func resolveMigrationsPath() string {
 		}
 	}
 
-	// Get current working directory
+	// Get current working directory.
 	workDir, err := os.Getwd()
 	if err != nil {
 		log.Printf("❌ Failed to get working directory: %v", err)
@@ -349,7 +349,7 @@ func resolveMigrationsPath() string {
 		log.Printf("🔍 Current working directory: %s", workDir)
 	}
 
-	// Get runtime path info
+	// Get runtime path info.
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
 		log.Fatal("❌ Unable to get current filename to resolve migrations path")
@@ -358,14 +358,14 @@ func resolveMigrationsPath() string {
 	baseDir := filepath.Dir(filename)
 	log.Printf("🔍 Base directory: %s", baseDir)
 
-	// Try different possible paths with detailed logging
+	// Try different possible paths with detailed logging.
 	possiblePaths := []string{
-		"./migrations",                       // Relative to working directory
-		"migrations",                         // Simple relative path
-		filepath.Join(workDir, "migrations"), // Working dir + migrations
-		filepath.Join(baseDir, "..", "..", "migrations"), // From tests/testapp -> project root
-		filepath.Join(baseDir, "..", "migrations"),       // From tests -> project root
-		filepath.Join(baseDir, "migrations"),             // Same directory as testapp
+		"./migrations",                       // Relative to working directory.
+		"migrations",                         // Simple relative path.
+		filepath.Join(workDir, "migrations"), // Working dir + migrations.
+		filepath.Join(baseDir, "..", "..", "migrations"), // From tests/testapp -> project root.
+		filepath.Join(baseDir, "..", "migrations"),       // From tests -> project root.
+		filepath.Join(baseDir, "migrations"),             // Same directory as testapp.
 	}
 
 	for i, path := range possiblePaths {
@@ -382,12 +382,12 @@ func resolveMigrationsPath() string {
 			if stat.IsDir() {
 				log.Printf("📁 Found migrations directory: %s", absPath)
 
-				// List contents to verify it's the right directory
+				// List contents to verify it's the right directory.
 				files, err := os.ReadDir(absPath)
 				if err == nil {
 					log.Printf("📁 Directory contains %d items:", len(files))
 					for j, file := range files {
-						if j < 5 { // Only show first 5 files
+						if j < 5 { // Only show first 5 files.
 							log.Printf("   - %s", file.Name())
 						}
 					}
@@ -402,7 +402,7 @@ func resolveMigrationsPath() string {
 		}
 	}
 
-	// As a last resort, let's see what's in the current directory
+	// As a last resort, let's see what's in the current directory.
 	log.Printf("🔍 Listing current directory contents:")
 	if files, err := os.ReadDir("."); err == nil {
 		for _, file := range files {
