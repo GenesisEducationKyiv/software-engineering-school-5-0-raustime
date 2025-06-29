@@ -7,7 +7,7 @@ type Metrics interface {
 	IncCacheDeletes()
 }
 
-// NoopMetrics – пуста реалізація, якщо метрики не потрібні
+// NoopMetrics – пуста реалізація, якщо метрики не потрібні.
 type NoopMetrics struct{}
 
 func (NoopMetrics) IncCacheHits()    {}

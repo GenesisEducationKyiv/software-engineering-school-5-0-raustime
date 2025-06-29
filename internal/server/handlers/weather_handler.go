@@ -9,19 +9,19 @@ import (
 	"weatherapi/internal/services/weather_service"
 )
 
-// WeatherHandler handles weather-related requests
+// WeatherHandler handles weather-related requests.
 type WeatherHandler struct {
 	weatherService weather_service.WeatherService
 }
 
-// NewWeatherHandler creates a new weather handler
+// NewWeatherHandler creates a new weather handler.
 func NewWeatherHandler(weatherService weather_service.WeatherService) WeatherHandler {
 	return WeatherHandler{
 		weatherService: weatherService,
 	}
 }
 
-// GetWeather handles weather requests
+// GetWeather handles weather requests.
 func (h WeatherHandler) GetWeather(w http.ResponseWriter, r *http.Request) { // value receiver
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

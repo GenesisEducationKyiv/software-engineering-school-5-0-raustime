@@ -13,19 +13,19 @@ import (
 	"weatherapi/internal/services/subscription_service"
 )
 
-// SubscriptionHandler handles subscription-related requests
+// SubscriptionHandler handles subscription-related requests.
 type SubscriptionHandler struct {
 	subscriptionService subscription_service.SubscriptionService
 }
 
-// NewSubscriptionHandler creates a new subscription handler
+// NewSubscriptionHandler creates a new subscription handler.
 func NewSubscriptionHandler(subscriptionService subscription_service.SubscriptionService) SubscriptionHandler {
 	return SubscriptionHandler{
 		subscriptionService: subscriptionService,
 	}
 }
 
-// Subscribe handles subscription requests
+// Subscribe handles subscription requests.
 func (h SubscriptionHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 	var req contracts.SubscriptionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -51,7 +51,7 @@ func (h SubscriptionHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// Confirm handles subscription confirmation
+// Confirm handles subscription confirmation.
 func (h *SubscriptionHandler) Confirm(w http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
 	if token == "" {
@@ -74,7 +74,7 @@ func (h *SubscriptionHandler) Confirm(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// Unsubscribe handles unsubscription
+// Unsubscribe handles unsubscription.
 func (h *SubscriptionHandler) Unsubscribe(w http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
 	if token == "" {

@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	// Cache key prefix for weather data
+	// Cache key prefix for weather data.
 	weatherCachePrefix = "weather:"
-	// Default Redis configuration
+	// Default Redis configuration.
 	defaultRedisDB       = 0
 	defaultRedisPoolSize = 10
 	defaultRedisTimeout  = 5 * time.Second
@@ -33,28 +33,28 @@ type RedisClient interface {
 	PoolStats() *redis.PoolStats
 }
 
-// CacheConfig holds cache configuration such as default expiration
+// CacheConfig holds cache configuration such as default expiration.
 type CacheConfig struct {
 	DefaultExpiration time.Duration `json:"default_expiration"`
 }
 
-// RedisCache implements WeatherCache using Redis
+// RedisCache implements WeatherCache using Redis.
 type RedisCache struct {
 	client  RedisClient
 	config  CacheConfig
 	metrics Metrics
 }
 
-// RedisConfig holds Redis connection configuration
+// RedisConfig holds Redis connection configuration.
 type RedisConfig struct {
-	Addr     string        `json:"addr"`      // Redis server address (host:port)
-	Password string        `json:"password"`  // Redis password (optional)
-	DB       int           `json:"db"`        // Redis database number
-	PoolSize int           `json:"pool_size"` // Connection pool size
-	Timeout  time.Duration `json:"timeout"`   // Connection timeout
+	Addr     string        `json:"addr"`      // Redis server address (host:port).
+	Password string        `json:"password"`  // Redis password (optional).
+	DB       int           `json:"db"`        // Redis database number.
+	PoolSize int           `json:"pool_size"` // Connection pool size.
+	Timeout  time.Duration `json:"timeout"`   // Connection timeout.
 }
 
-// DefaultRedisConfig returns default Redis configuration
+// DefaultRedisConfig returns default Redis configuration.
 func DefaultRedisConfig() RedisConfig {
 	return RedisConfig{
 		Addr:     "localhost:6379",
@@ -65,7 +65,7 @@ func DefaultRedisConfig() RedisConfig {
 	}
 }
 
-// NewRedisCache creates a new Redis cache instance
+// NewRedisCache creates a new Redis cache instance.
 func NewRedisCache(redisConfig RedisConfig, cacheConfig CacheConfig, metrics Metrics) (*RedisCache, error) {
 	// Create Redis client
 	client := redis.NewClient(&redis.Options{
@@ -74,16 +74,16 @@ func NewRedisCache(redisConfig RedisConfig, cacheConfig CacheConfig, metrics Met
 		DB:       redisConfig.DB,
 		PoolSize: redisConfig.PoolSize,
 
-		// Connection timeouts
+		// Connection timeouts.
 		DialTimeout:  redisConfig.Timeout,
 		ReadTimeout:  redisConfig.Timeout,
 		WriteTimeout: redisConfig.Timeout,
 
-		// Pool timeouts
+		// Pool timeouts.
 		PoolTimeout: redisConfig.Timeout,
 	})
 
-	// Test connection
+	// Test connection.
 	ctx, cancel := context.WithTimeout(context.Background(), redisConfig.Timeout)
 	defer cancel()
 
@@ -98,14 +98,14 @@ func NewRedisCache(redisConfig RedisConfig, cacheConfig CacheConfig, metrics Met
 	}, nil
 }
 
-// generateCacheKey creates a cache key for a city
+// generateCacheKey creates a cache key for a city.
 func (r *RedisCache) generateCacheKey(city string) string {
-	// Normalize city name (lowercase, trim spaces)
+	// Normalize city name (lowercase, trim spaces).
 	normalizedCity := strings.ToLower(strings.TrimSpace(city))
 	return weatherCachePrefix + normalizedCity
 }
 
-// Get retrieves weather data from Redis cache
+// Get retrieves weather data from Redis cache.
 func (r *RedisCache) Get(ctx context.Context, city string) (contracts.WeatherData, error) {
 	key := r.generateCacheKey(city)
 
@@ -113,14 +113,14 @@ func (r *RedisCache) Get(ctx context.Context, city string) (contracts.WeatherDat
 	result, err := r.client.Get(ctx, key).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			// Cache miss - return empty data with no error
+			// Cache miss - return empty data with no error.
 			r.metrics.IncCacheMisses()
 			return contracts.WeatherData{}, fmt.Errorf("cache miss for city: %s", city)
 		}
 		return contracts.WeatherData{}, fmt.Errorf("failed to get from cache: %w", err)
 	}
 	r.metrics.IncCacheHits()
-	// Deserialize JSON data
+	// Deserialize JSON data.
 	var data contracts.WeatherData
 	if err := json.Unmarshal([]byte(result), &data); err != nil {
 		return contracts.WeatherData{}, fmt.Errorf("failed to unmarshal cached data: %w", err)
@@ -129,7 +129,7 @@ func (r *RedisCache) Get(ctx context.Context, city string) (contracts.WeatherDat
 	return data, nil
 }
 
-// Set stores weather data in Redis cache with expiration
+// Set stores weather data in Redis cache with expiration.
 func (r *RedisCache) Set(ctx context.Context, city string, data contracts.WeatherData, expiration time.Duration) error {
 	key := r.generateCacheKey(city)
 
@@ -139,12 +139,12 @@ func (r *RedisCache) Set(ctx context.Context, city string, data contracts.Weathe
 		return fmt.Errorf("failed to marshal weather data: %w", err)
 	}
 
-	// Use default expiration if none provided
+	// Use default expiration if none provided.
 	if expiration <= 0 {
 		expiration = r.config.DefaultExpiration
 	}
 
-	// Set data in Redis with expiration
+	// Set data in Redis with expiration.
 	if err := r.client.Set(ctx, key, jsonData, expiration).Err(); err != nil {
 		return fmt.Errorf("failed to set cache: %w", err)
 	}
@@ -152,7 +152,7 @@ func (r *RedisCache) Set(ctx context.Context, city string, data contracts.Weathe
 	return nil
 }
 
-// Delete removes weather data from Redis cache
+// Delete removes weather data from Redis cache.
 func (r *RedisCache) Delete(ctx context.Context, city string) error {
 	key := r.generateCacheKey(city)
 
@@ -163,7 +163,7 @@ func (r *RedisCache) Delete(ctx context.Context, city string) error {
 	return nil
 }
 
-// Exists checks if weather data exists in Redis cache
+// Exists checks if weather data exists in Redis cache.
 func (r *RedisCache) Exists(ctx context.Context, city string) (bool, error) {
 	key := r.generateCacheKey(city)
 
@@ -175,7 +175,7 @@ func (r *RedisCache) Exists(ctx context.Context, city string) (bool, error) {
 	return count > 0, nil
 }
 
-// Health checks Redis connection health
+// Health checks Redis connection health.
 func (r *RedisCache) Health(ctx context.Context) error {
 	if err := r.client.Ping(ctx).Err(); err != nil {
 		return fmt.Errorf("redis health check failed: %w", err)
@@ -183,12 +183,12 @@ func (r *RedisCache) Health(ctx context.Context) error {
 	return nil
 }
 
-// Close closes the Redis connection
+// Close closes the Redis connection.
 func (r *RedisCache) Close() error {
 	return r.client.Close()
 }
 
-// GetStats returns Redis cache statistics
+// GetStats returns Redis cache statistics.
 func (r *RedisCache) GetStats(ctx context.Context) (map[string]interface{}, error) {
 	// Get Redis info
 	info, err := r.client.Info(ctx, "memory", "stats").Result()
@@ -196,7 +196,7 @@ func (r *RedisCache) GetStats(ctx context.Context) (map[string]interface{}, erro
 		return nil, fmt.Errorf("failed to get Redis stats: %w", err)
 	}
 
-	// Get connection pool stats
+	// Get connection pool stats.
 	poolStats := r.client.PoolStats()
 
 	stats := map[string]interface{}{

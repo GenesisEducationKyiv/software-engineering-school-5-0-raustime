@@ -37,11 +37,11 @@ type Container struct {
 	Router              http.Handler
 }
 
-// BuildContainer створює всі залежності і повертає контейнер
+// BuildContainer створює всі залежності і повертає контейнер.
 func BuildContainer() (Container, error) {
 	_ = godotenv.Load()
 
-	// Load config
+	// Load config.
 	cfg, err := config.Load()
 	if err != nil {
 		return Container{}, fmt.Errorf("config load failed: %w", err)
@@ -50,13 +50,13 @@ func BuildContainer() (Container, error) {
 		return Container{}, fmt.Errorf("config validation failed: %w", err)
 	}
 
-	// Init DB
+	// Init DB.
 	db, err := initDatabase(cfg)
 	if err != nil {
 		return Container{}, fmt.Errorf("database init failed: %w", err)
 	}
 
-	// Run migrations
+	// Run migrations.
 	mr := migration.NewRunner(db, "migrations")
 	if err := mr.RunMigrations(context.Background()); err != nil {
 		return Container{}, fmt.Errorf("migrations failed: %w", err)
@@ -64,7 +64,7 @@ func BuildContainer() (Container, error) {
 
 	subscriptionRepo := repositories.NewSubscriptionRepo(db)
 
-	// Init Weather API adapters with config
+	// Init Weather API adapters with config.
 	openWeatherAdapter, err := adapters.NewOpenWeatherAdapter(cfg.OpenWeatherKey)
 	if err != nil {
 		return Container{}, fmt.Errorf("failed to create adapter: %w", err)
@@ -74,24 +74,23 @@ func BuildContainer() (Container, error) {
 	if err != nil {
 		return Container{}, fmt.Errorf("failed to create adapter: %w", err)
 	}
-	// Chain
-	// Create logger
+	// Create logger.
 	logger := logging.NewFileWeatherLogger("weather_providers.log")
 
 	openWeatherHandler := chain.NewBaseWeatherHandler(&openWeatherAdapter, "openweathermap.org")
 	weatherAPIHandler := chain.NewBaseWeatherHandler(&weatherAPIAdapter, "weatherapi.com")
 
-	// Set up the chain: OpenWeather -> WeatherAPI
+	// Set up the chain: OpenWeather -> WeatherAPI.
 	openWeatherHandler.SetNext(weatherAPIHandler)
 
 	weatherChain := chain.NewWeatherChain(logger)
 	weatherChain.SetFirstHandler(openWeatherHandler)
 
-	// Register metrics
+	// Register metrics.
 	metrics := cache.NewPrometheusMetrics()
 	metrics.Register()
 
-	// Init Redis cache
+	// Init Redis cache.
 	var redisCache cache.WeatherCache
 	if cfg.Cache.Enabled {
 		redisCache, err = cache.NewRedisCache(
@@ -114,7 +113,7 @@ func BuildContainer() (Container, error) {
 		redisCache = cache.NoopWeatherCache{}
 	}
 
-	// Weather service
+	// Weather service.
 	weatherService := weather_service.NewWeatherService(
 		weatherChain,
 		redisCache,
@@ -138,7 +137,7 @@ func BuildContainer() (Container, error) {
 	}, nil
 }
 
-// initDatabase sets up Bun with PostgreSQL
+// initDatabase sets up Bun with PostgreSQL.
 func initDatabase(cfg *config.Config) (*bun.DB, error) {
 	sqlDB, err := sql.Open("pg", cfg.GetDatabaseURL())
 	if err != nil {

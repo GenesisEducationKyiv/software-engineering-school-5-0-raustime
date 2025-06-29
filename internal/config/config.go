@@ -38,14 +38,14 @@ type RedisConfig struct {
 	Timeout  time.Duration
 }
 
-// Load завантажує конфігурацію з змінних оточення
+// Load завантажує конфігурацію з змінних оточення.
 func Load() (*Config, error) {
 	smtpPort, err := strconv.Atoi(getEnv("SMTP_PORT", "587"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid SMTP_PORT: %w", err)
 	}
 
-	// Redis + Cache
+	// Redis + Cache.
 	cacheEnabled := strings.ToLower(getEnv("CACHE_ENABLED", "false"))
 	enabled := cacheEnabled == "true" || cacheEnabled == "1" || cacheEnabled == "yes"
 
@@ -98,22 +98,22 @@ func LoadTestConfig() (*Config, error) {
 	return cfg, nil
 }
 
-// IsProduction перевіряє чи додаток працює в продакшен режимі
+// IsProduction перевіряє чи додаток працює в продакшен режимі.
 func (c *Config) IsProduction() bool {
 	return c.Environment == "production"
 }
 
-// IsDevelopment перевіряє чи додаток працює в режимі розробки
+// IsDevelopment перевіряє чи додаток працює в режимі розробки.
 func (c *Config) IsDevelopment() bool {
 	return c.Environment == "development"
 }
 
-// IsTest перевіряє чи додаток працює в тестовому режимі
+// IsTest перевіряє чи додаток працює в тестовому режимі.
 func (c *Config) IsTest() bool {
 	return c.Environment == "test"
 }
 
-// GetDatabaseURL повертає URL бази даних в залежності від середовища
+// GetDatabaseURL повертає URL бази даних в залежності від середовища.
 func (c *Config) GetDatabaseURL() string {
 	if c.IsTest() && c.DatabaseTestURL != "" {
 		return c.DatabaseTestURL
@@ -121,7 +121,7 @@ func (c *Config) GetDatabaseURL() string {
 	return c.DatabaseURL
 }
 
-// IsBunDebugEnabled перевіряє чи включений debug режим для Bun ORM
+// IsBunDebugEnabled перевіряє чи включений debug режим для Bun ORM.
 func (c *Config) IsBunDebugEnabled() bool {
 	switch strings.ToLower(strings.TrimSpace(c.BunDebugMode)) {
 	case "1", "true", "yes", "on":
@@ -131,7 +131,7 @@ func (c *Config) IsBunDebugEnabled() bool {
 	}
 }
 
-// Validate перевіряє чи всі обов'язкові конфігурації встановлені
+// Validate перевіряє чи всі обов'язкові конфігурації встановлені.
 func (c *Config) Validate() error {
 	var errors []string
 
@@ -154,7 +154,7 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// getEnv отримує значення змінної оточення або повертає значення за замовчуванням
+// getEnv отримує значення змінної оточення або повертає значення за замовчуванням.
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value

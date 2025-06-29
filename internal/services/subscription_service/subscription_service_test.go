@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mailerServiceMock implements the mailer service interface
+// mailerServiceMock implements the mailer service interface.
 type mailerServiceMock struct {
 	mock.Mock
 }
@@ -23,7 +23,7 @@ func (m *mailerServiceMock) SendConfirmationEmail(ctx context.Context, email, to
 	return args.Error(0)
 }
 
-// subscriptionRepoMock implements the subscription repository interface
+// subscriptionRepoMock implements the subscription repository interface.
 type subscriptionRepoMock struct {
 	mock.Mock
 }

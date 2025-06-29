@@ -15,20 +15,20 @@ import (
 	"github.com/uptrace/bun"
 )
 
-// Migration represents a single migration
+// Migration represents a single migration.
 type Migration struct {
 	Version string
 	Name    string
 	UpSQL   string
 }
 
-// Runner handles database migrations
+// Runner handles database migrations.
 type Runner struct {
 	db            *bun.DB
 	migrationsDir string
 }
 
-// NewRunner creates a new migration runner
+// NewRunner creates a new migration runner.
 func NewRunner(db *bun.DB, migrationsDir string) *Runner {
 	return &Runner{
 		db:            db,
@@ -36,26 +36,26 @@ func NewRunner(db *bun.DB, migrationsDir string) *Runner {
 	}
 }
 
-// RunMigrations executes all pending migrations
+// RunMigrations executes all pending migrations.
 func (r *Runner) RunMigrations(ctx context.Context) error {
-	// Create migrations table if it doesn't exist
+	// Create migrations table if it doesn't exist.
 	if err := r.createMigrationsTable(ctx); err != nil {
 		return fmt.Errorf("failed to create migrations table: %w", err)
 	}
 
-	// Load all migration files
+	// Load all migration files.
 	migrations, err := r.loadMigrations()
 	if err != nil {
 		return fmt.Errorf("failed to load migrations: %w", err)
 	}
 
-	// Get applied migrations
+	// Get applied migrations.
 	appliedMigrations, err := r.getAppliedMigrations(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get applied migrations: %w", err)
 	}
 
-	// Apply pending migrations
+	// Apply pending migrations.
 	for _, migration := range migrations {
 		if _, applied := appliedMigrations[migration.Version]; applied {
 			fmt.Printf("Migration %s already applied, skipping\n", migration.Version)
@@ -71,7 +71,7 @@ func (r *Runner) RunMigrations(ctx context.Context) error {
 	return nil
 }
 
-// createMigrationsTable creates the migrations tracking table
+// createMigrationsTable creates the migrations tracking table.
 func (r *Runner) createMigrationsTable(ctx context.Context) error {
 	query := `
 		CREATE TABLE IF NOT EXISTS migrations (
@@ -96,7 +96,7 @@ func (r *Runner) loadMigrations() ([]Migration, error) {
 			return nil
 		}
 
-		// Extract version and name from filename
+		// Extract version and name from filename.
 		filename := d.Name()
 		parts := strings.Split(filename, "_")
 		if len(parts) < 2 {
@@ -106,7 +106,7 @@ func (r *Runner) loadMigrations() ([]Migration, error) {
 		version := parts[0]
 		name := strings.TrimSuffix(strings.Join(parts[1:], "_"), ".up.sql")
 
-		// Read up migration
+		// Read up migration.
 		upSQL, err := os.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("failed to read up migration file %s: %w", path, err)
@@ -124,7 +124,7 @@ func (r *Runner) loadMigrations() ([]Migration, error) {
 		return nil, err
 	}
 
-	// Sort migrations by version
+	// Sort migrations by version.
 	sort.Slice(migrations, func(i, j int) bool {
 		return migrations[i].Version < migrations[j].Version
 	})
@@ -132,7 +132,7 @@ func (r *Runner) loadMigrations() ([]Migration, error) {
 	return migrations, nil
 }
 
-// getAppliedMigrations returns a map of applied migration versions
+// getAppliedMigrations returns a map of applied migration versions.
 func (r *Runner) getAppliedMigrations(ctx context.Context) (map[string]bool, error) {
 	rows, err := r.db.QueryContext(ctx, "SELECT version FROM migrations")
 	if err != nil {
@@ -155,7 +155,7 @@ func (r *Runner) getAppliedMigrations(ctx context.Context) (map[string]bool, err
 	return applied, rows.Err()
 }
 
-// applyMigration applies a single migration
+// applyMigration applies a single migration.
 func (r *Runner) applyMigration(ctx context.Context, migration Migration) error {
 	tx, err := r.db.Begin()
 	if err != nil {
@@ -167,12 +167,11 @@ func (r *Runner) applyMigration(ctx context.Context, migration Migration) error 
 		}
 	}()
 
-	// Execute migration SQL
+	// Execute migration SQL.
 	if _, err := tx.ExecContext(ctx, migration.UpSQL); err != nil {
 		return fmt.Errorf("failed to execute migration SQL: %w", err)
 	}
 
-	// Record migration as applied - FIXED: Using ? placeholders instead of $1, $2
 	_, err = tx.ExecContext(ctx,
 		"INSERT INTO migrations (version, name) VALUES (?, ?)",
 		migration.Version, migration.Name,

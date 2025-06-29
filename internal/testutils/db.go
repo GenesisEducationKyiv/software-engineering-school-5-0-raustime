@@ -16,7 +16,7 @@ import (
 	"github.com/uptrace/bun/driver/pgdriver"
 )
 
-// SetupTestDB creates a test database connection and runs migrations
+// SetupTestDB creates a test database connection and runs migrations.
 func SetupTestDB(t *testing.T) *bun.DB {
 	t.Helper()
 
@@ -30,22 +30,21 @@ func SetupTestDB(t *testing.T) *bun.DB {
 
 	ctx := context.Background()
 
-	// Test database connection
+	// Test database connection.
 	if err := db.PingContext(ctx); err != nil {
 		t.Fatalf("failed to ping test database: %v", err)
 	}
 
-	// Get migrations directory path
+	// Get migrations directory path.
 	migrationsDir := getMigrationsDir()
-	//migrationsDir := filepath.Join(".", "migrations")
 	t.Logf("Resolved migrations path: %s", migrationsDir)
-	// Run migrations
+	// Run migrations.
 	migrationRunner := migration.NewRunner(db, migrationsDir)
 	if err := migrationRunner.RunMigrations(ctx); err != nil {
 		t.Fatalf("failed to run migrations: %v", err)
 	}
 
-	// Clean up function to be called in test cleanup
+	// Clean up function to be called in test cleanup.
 	t.Cleanup(func() {
 		cleanupTestDB(t, db)
 	})
@@ -53,20 +52,19 @@ func SetupTestDB(t *testing.T) *bun.DB {
 	return db
 }
 
-// CleanupTestDB truncates all tables for clean test state
+// CleanupTestDB truncates all tables for clean test state.
 func CleanupTestDB(t *testing.T, db *bun.DB) {
 	t.Helper()
 	cleanupTestDB(t, db)
 }
 
-// cleanupTestDB performs the actual cleanup
+// cleanupTestDB performs the actual cleanup.
 func cleanupTestDB(t *testing.T, db *bun.DB) {
 	ctx := context.Background()
 
-	// List of tables to truncate (add more as needed)
+	// List of tables to truncate (add more as needed).
 	tables := []string{
 		"subscriptions",
-		// Add other table names here
 	}
 
 	for _, table := range tables {
@@ -83,20 +81,14 @@ func getMigrationsDir() string {
 	projectRoot := filepath.Join(dir, "..", "..")
 	migrationsDir := filepath.Join(projectRoot, "migrations")
 
-	fmt.Println("💡 Looking for migrations at:", migrationsDir) // <- debug
+	fmt.Println("💡 Looking for migrations at:", migrationsDir)
 
 	return migrationsDir
 }
 
-// CreateTestDBWithData creates a test DB and populates it with test data
+// CreateTestDBWithData creates a test DB and populates it with test data.
 func CreateTestDBWithData(t *testing.T) *bun.DB {
 	t.Helper()
-
 	db := SetupTestDB(t)
-
-	// Add any common test data here
-	// Example:
-	// seedTestData(t, db)
-
 	return db
 }

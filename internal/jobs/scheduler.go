@@ -11,24 +11,24 @@ import (
 	"weatherapi/internal/services/weather_service"
 )
 
-// Interfaces for dependency injection and testing
+// Interfaces for dependency injection and testing.
 
-// subscriptionService defines required methods from SubscriptionService
+// subscriptionService defines required methods from SubscriptionService.
 type subscriptionService interface {
 	GetConfirmed(ctx context.Context, frequency string) ([]contracts.Subscription, error)
 }
 
-// mailerService defines required methods from MailerService
+// mailerService defines required methods from MailerService.
 type mailerService interface {
 	SendWeatherEmail(ctx context.Context, to, city string, data contracts.WeatherData, token string) error
 }
 
-// weatherService defines required methods from WeatherService
+// weatherService defines required methods from WeatherService.
 type weatherService interface {
 	GetWeather(ctx context.Context, city string) (contracts.WeatherData, error)
 }
 
-// schedulerProvider визначає інтерфейс для планувальника задач
+// schedulerProvider визначає інтерфейс для планувальника задач.
 type jobSchedulerProvider interface {
 	Start()
 	Stop()
@@ -43,7 +43,7 @@ type Scheduler struct {
 	stopChan            chan struct{}
 }
 
-// NewScheduler creates a new job scheduler
+// NewScheduler creates a new job scheduler.
 func NewScheduler(
 	subscriptionService subscription_service.SubscriptionService,
 	mailerService mailer_service.MailerService,
@@ -57,17 +57,17 @@ func NewScheduler(
 	}
 }
 
-// Start starts the job scheduler
+// Start starts the job scheduler.
 func (s Scheduler) Start() {
 	go s.weatherNotificationLoop()
 }
 
-// Stop stops the job scheduler
+// Stop stops the job scheduler.
 func (s Scheduler) Stop() {
 	close(s.stopChan)
 }
 
-// weatherNotificationLoop runs the weather notification loop
+// weatherNotificationLoop runs the weather notification loop.
 func (s Scheduler) weatherNotificationLoop() {
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
@@ -77,11 +77,11 @@ func (s Scheduler) weatherNotificationLoop() {
 		case <-ticker.C:
 			now := time.Now()
 
-			// Send hourly updates (00 minutes)
+			// Send hourly updates (00 minutes).
 			if now.Minute() == 0 {
 				s.sendWeatherUpdates("hourly")
 
-				// Send daily updates at 8:00 AM
+				// Send daily updates at 8:00 AM.
 				if now.Hour() == 8 {
 					s.sendWeatherUpdates("daily")
 				}
@@ -93,7 +93,7 @@ func (s Scheduler) weatherNotificationLoop() {
 	}
 }
 
-// sendWeatherUpdates sends weather updates for specified frequency
+// sendWeatherUpdates sends weather updates for specified frequency.
 func (s Scheduler) sendWeatherUpdates(frequency string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

@@ -6,7 +6,7 @@ import (
 	"weatherapi/internal/contracts"
 )
 
-// WeatherCache визначає інтерфейс для кешування погоди
+// WeatherCache визначає інтерфейс для кешування погоди.
 type WeatherCache interface {
 	Get(ctx context.Context, city string) (contracts.WeatherData, error)
 	Set(ctx context.Context, city string, data contracts.WeatherData, expiration time.Duration) error

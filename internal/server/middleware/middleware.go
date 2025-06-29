@@ -7,10 +7,10 @@ import (
 	"time"
 )
 
-// Middleware represents a middleware function
+// Middleware represents a middleware function.
 type Middleware func(http.Handler) http.Handler
 
-// Chain applies multiple middleware functions
+// Chain applies multiple middleware functions.
 func Chain(h http.Handler, middlewares ...Middleware) http.Handler {
 	for i := len(middlewares) - 1; i >= 0; i-- {
 		h = middlewares[i](h)
@@ -18,7 +18,7 @@ func Chain(h http.Handler, middlewares ...Middleware) http.Handler {
 	return h
 }
 
-// CORS adds CORS headers
+// CORS adds CORS headers.
 func CORS() Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -39,21 +39,21 @@ func CORS() Middleware {
 	}
 }
 
-// Logging logs HTTP requests
+// Logging logs HTTP requests.
 func Logging() Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
-			
+
 			lw := &loggingWriter{ResponseWriter: w, statusCode: http.StatusOK}
 			next.ServeHTTP(lw, r)
-			
+
 			log.Printf("%s %s %d %v", r.Method, r.URL.Path, lw.statusCode, time.Since(start))
 		})
 	}
 }
 
-// Recovery recovers from panics
+// Recovery recovers from panics.
 func Recovery() Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

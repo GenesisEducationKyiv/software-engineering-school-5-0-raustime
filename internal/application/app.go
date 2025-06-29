@@ -31,7 +31,7 @@ type App struct {
 	jobScheduler        jobs.Scheduler
 }
 
-// create new app instance
+// create new app instance.
 
 func New() (*App, error) {
 	container, err := di.BuildContainer()
@@ -80,7 +80,7 @@ func (a *App) Run() error {
 	return a.waitForShutdown()
 }
 
-// waitForShutdown очікує сигнал завершення і завершує роботу
+// waitForShutdown очікує сигнал завершення і завершує роботу.
 func (a *App) waitForShutdown() error {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -99,7 +99,7 @@ func (a *App) waitForShutdown() error {
 	return nil
 }
 
-// Close — м'яке завершення роботи сервісів, БД, HTTP
+// Close — м'яке завершення роботи сервісів, БД, HTTP.
 func (a *App) Close(ctx context.Context) error {
 	var err error
 
@@ -124,12 +124,12 @@ func (a *App) Close(ctx context.Context) error {
 	return err
 }
 
-// GetDB повертає з'єднання з базою
+// GetDB повертає з'єднання з базою.
 func (a *App) GetDB() *bun.DB {
 	return a.db
 }
 
-// GetConfig повертає конфігурацію
+// GetConfig повертає конфігурацію.
 func (a *App) GetConfig() *config.Config {
 	return a.config
 }
