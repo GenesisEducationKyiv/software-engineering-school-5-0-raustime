@@ -13,7 +13,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/uptrace/bun"
 
-	"weatherapi/internal/cache"
 	"weatherapi/internal/config"
 	"weatherapi/internal/di"
 	"weatherapi/internal/jobs"
@@ -38,8 +37,6 @@ func New() (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to build container: %w", err)
 	}
-	// Register metrics
-	cache.RegisterCacheMetrics()
 
 	mux := http.NewServeMux()
 

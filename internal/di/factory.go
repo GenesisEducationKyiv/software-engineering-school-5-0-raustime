@@ -87,6 +87,10 @@ func BuildContainer() (Container, error) {
 	weatherChain := chain.NewWeatherChain(logger)
 	weatherChain.SetFirstHandler(openWeatherHandler)
 
+	// Register metrics
+	metrics := cache.NewPrometheusMetrics()
+	metrics.Register()
+
 	// Init Redis cache
 	var redisCache cache.WeatherCache
 	if cfg.Cache.Enabled {
@@ -101,6 +105,7 @@ func BuildContainer() (Container, error) {
 			cache.CacheConfig{
 				DefaultExpiration: cfg.Cache.Expiration,
 			},
+			metrics,
 		)
 		if err != nil {
 			return Container{}, fmt.Errorf("failed to initialize Redis cache: %w", err)

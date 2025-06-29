@@ -15,7 +15,6 @@ import (
 const (
 	// Cache key prefix for weather data
 	weatherCachePrefix = "weather:"
-
 	// Default Redis configuration
 	defaultRedisDB       = 0
 	defaultRedisPoolSize = 10
@@ -40,8 +39,9 @@ type CacheConfig struct {
 
 // RedisCache implements WeatherCache using Redis
 type RedisCache struct {
-	client RedisClient
-	config CacheConfig
+	client  RedisClient
+	config  CacheConfig
+	metrics Metrics
 }
 
 // RedisConfig holds Redis connection configuration
@@ -65,7 +65,7 @@ func DefaultRedisConfig() RedisConfig {
 }
 
 // NewRedisCache creates a new Redis cache instance
-func NewRedisCache(redisConfig RedisConfig, cacheConfig CacheConfig) (*RedisCache, error) {
+func NewRedisCache(redisConfig RedisConfig, cacheConfig CacheConfig, metrics Metrics) (*RedisCache, error) {
 	// Create Redis client
 	client := redis.NewClient(&redis.Options{
 		Addr:     redisConfig.Addr,
@@ -91,8 +91,9 @@ func NewRedisCache(redisConfig RedisConfig, cacheConfig CacheConfig) (*RedisCach
 	}
 
 	return &RedisCache{
-		client: client,
-		config: cacheConfig,
+		client:  client,
+		config:  cacheConfig,
+		metrics: metrics,
 	}, nil
 }
 
@@ -112,12 +113,12 @@ func (r *RedisCache) Get(ctx context.Context, city string) (contracts.WeatherDat
 	if err != nil {
 		if err == redis.Nil {
 			// Cache miss - return empty data with no error
-			cacheMisses.WithLabelValues(city).Inc()
+			r.metrics.IncCacheMisses()
 			return contracts.WeatherData{}, fmt.Errorf("cache miss for city: %s", city)
 		}
 		return contracts.WeatherData{}, fmt.Errorf("failed to get from cache: %w", err)
 	}
-	cacheHits.WithLabelValues(city).Inc()
+	r.metrics.IncCacheHits()
 	// Deserialize JSON data
 	var data contracts.WeatherData
 	if err := json.Unmarshal([]byte(result), &data); err != nil {
@@ -146,7 +147,7 @@ func (r *RedisCache) Set(ctx context.Context, city string, data contracts.Weathe
 	if err := r.client.Set(ctx, key, jsonData, expiration).Err(); err != nil {
 		return fmt.Errorf("failed to set cache: %w", err)
 	}
-	cacheSets.WithLabelValues(city).Inc()
+	r.metrics.IncCacheSets()
 	return nil
 }
 
@@ -157,7 +158,7 @@ func (r *RedisCache) Delete(ctx context.Context, city string) error {
 	if err := r.client.Del(ctx, key).Err(); err != nil {
 		return fmt.Errorf("failed to delete from cache: %w", err)
 	}
-	cacheDeletes.WithLabelValues(city).Inc()
+	r.metrics.IncCacheDeletes()
 	return nil
 }
 
@@ -176,7 +177,7 @@ func (r *RedisCache) Exists(ctx context.Context, city string) (bool, error) {
 // Health checks Redis connection health
 func (r *RedisCache) Health(ctx context.Context) error {
 	if err := r.client.Ping(ctx).Err(); err != nil {
-		return fmt.Errorf("Redis health check failed: %w", err)
+		return fmt.Errorf("redis health check failed: %w", err)
 	}
 	return nil
 }
