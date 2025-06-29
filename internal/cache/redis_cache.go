@@ -35,7 +35,7 @@ type RedisClient interface {
 
 // CacheConfig holds cache configuration such as default expiration.
 type CacheConfig struct {
-	DefaultExpiration time.Duration `json:"defaultExpiration"`
+	DefaultExpiration time.Duration `json:"default_expiration"`
 }
 
 // RedisCache implements WeatherCache using Redis.
@@ -47,11 +47,11 @@ type RedisCache struct {
 
 // RedisConfig holds Redis connection configuration.
 type RedisConfig struct {
-	Addr     string        `json:"addr"`     // Redis server address (host:port).
-	Password string        `json:"password"` // Redis password (optional).
-	DB       int           `json:"db"`       // Redis database number.
-	PoolSize int           `json:"poolSize"` // Connection pool size.
-	Timeout  time.Duration `json:"timeout"`  // Connection timeout.
+	Addr     string        `json:"addr"`      // Redis server address (host:port).
+	Password string        `json:"password"`  // Redis password (optional).
+	DB       int           `json:"db"`        // Redis database number.
+	PoolSize int           `json:"pool_size"` // Connection pool size.
+	Timeout  time.Duration `json:"timeout"`   // Connection timeout.
 }
 
 // DefaultRedisConfig returns default Redis configuration.

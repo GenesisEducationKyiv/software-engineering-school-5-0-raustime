@@ -34,6 +34,12 @@ linters:
   settings:
     revive:
       severity: warning
+    tagliatelle:
+    case:
+      rules:
+        json: snake  # Allow snake_case for JSON tags (for external APIs)
+        yaml: camel
+        xml: camel
   exclusions:
     generated: lax
     rules:
