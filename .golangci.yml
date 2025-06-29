@@ -34,11 +34,15 @@ linters:
   settings:
     revive:
       severity: warning
+
     tagliatelle:
+    case:
       rules:
         json: snake
         yaml: camel
         xml: camel
+      use-field-name: false
+      
   exclusions:
     generated: lax
     rules:
