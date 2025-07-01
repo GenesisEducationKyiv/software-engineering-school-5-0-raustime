@@ -150,7 +150,7 @@ func initDatabase(cfg *config.Config) (*bun.DB, error) {
 		db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
 	}
 
-	if err := db.Ping(); err != nil {
+	if err := db.PingContext(context.Background()); err != nil {
 		return nil, err
 	}
 
