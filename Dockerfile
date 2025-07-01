@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM golang:1.23
+FROM golang:1.23 as builder
 
 # Встановлюємо bash, netcat, postgresql-client
 RUN apt-get update && \
@@ -30,9 +30,13 @@ RUN go mod download
 # Копіюємо решту коду
 COPY . .
 
-# Збірка бінарника
-RUN go build -o app ./cmd && chmod +x ./app
+## Збірка бінарника
+RUN go build -o app ./cmd
+
+
+FROM scratch
+COPY --from=builder /app/app /app
 
 # Встановлення entrypoint та команд за замовчуванням
 ENTRYPOINT ["/app/wait-for-postgres.sh"]
-CMD ["./app"]
+CMD ["/app"]
