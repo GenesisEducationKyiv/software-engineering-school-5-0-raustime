@@ -106,8 +106,10 @@ func TestRedisCache_SetAndGet(t *testing.T) {
 func TestRedisCache_Get_NotFound(t *testing.T) {
 	mockRedis := new(MockRedis)
 	cache := &RedisCache{
-		client:  mockRedis,
-		config:  CacheConfig{},
+		client: mockRedis,
+		config: CacheConfig{
+			IsEnabled: true,
+		},
 		metrics: NoopMetrics{},
 	}
 
@@ -122,8 +124,10 @@ func TestRedisCache_Get_NotFound(t *testing.T) {
 func TestRedisCache_Exists(t *testing.T) {
 	mockRedis := new(MockRedis)
 	cache := &RedisCache{
-		client:  mockRedis,
-		config:  CacheConfig{},
+		client: mockRedis,
+		config: CacheConfig{
+			IsEnabled: true,
+		},
 		metrics: NoopMetrics{},
 	}
 
