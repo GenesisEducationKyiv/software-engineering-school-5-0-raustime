@@ -102,6 +102,7 @@ func BuildContainer() (Container, error) {
 				Timeout:  cfg.Cache.Redis.Timeout,
 			},
 			cache.CacheConfig{
+				IsEnabled:         cfg.Cache.Enabled,
 				DefaultExpiration: cfg.Cache.Expiration,
 			},
 			metrics,
@@ -118,7 +119,6 @@ func BuildContainer() (Container, error) {
 		weatherChain,
 		redisCache,
 		cfg.Cache.Expiration,
-		cfg.Cache.Enabled,
 	)
 	mailerService := mailer_service.NewMailerService(mailer_service.NewSMTPSender(cfg.SMTPUser, cfg.SMTPPassword, cfg.SMTPHost, strconv.Itoa(cfg.SMTPPort)), cfg.AppBaseURL)
 

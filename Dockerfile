@@ -9,6 +9,16 @@ RUN apt-get update && \
 # Робоча директорія всередині контейнера
 WORKDIR /app
 
+# Копіюємо go.mod та go.sum — кешування залежностей
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Копіюємо решту коду
+COPY . .
+
+# Збірка бінарника
+RUN go build -o app ./cmd
+
 # Скрипт очікування PostgreSQL
 RUN echo '#!/bin/bash\n\
     set -e\n\
@@ -23,19 +33,27 @@ RUN echo '#!/bin/bash\n\
     echo "PostgreSQL is up. Running command: $@"\n\
     exec "$@"' > /app/wait-for-postgres.sh && chmod +x /app/wait-for-postgres.sh
 
-# Копіюємо go.mod та go.sum — кешування залежностей
-COPY go.mod go.sum ./
-RUN go mod download
+# Використовуємо alpine замість scratch для меншого розміру
+FROM alpine:latest
 
-# Копіюємо решту коду
-COPY . .
+# Встановлюємо необхідні пакети для runtime
+RUN apk --no-cache add \
+    bash \
+    netcat-openbsd \
+    postgresql-client \
+    ca-certificates
 
-## Збірка бінарника
-RUN go build -o app ./cmd
+# Явно створюємо директорію /app
+RUN mkdir -p /app
+WORKDIR /app
 
+# Копіюємо бінарник та скрипт з builder stage
+COPY --from=builder /app/app ./app
+COPY --from=builder /app/wait-for-postgres.sh ./wait-for-postgres.sh
+COPY --from=builder /app/Makefile ./Makefile
 
-FROM scratch
-COPY --from=builder /app/app /app
+# Переконуємося, що скрипт має права на виконання
+RUN chmod +x ./wait-for-postgres.sh
 
 # Встановлення entrypoint та команд за замовчуванням
 ENTRYPOINT ["/app/wait-for-postgres.sh"]

@@ -35,6 +35,7 @@ type RedisClient interface {
 
 // CacheConfig holds cache configuration such as default expiration.
 type CacheConfig struct {
+	IsEnabled         bool
 	DefaultExpiration time.Duration `json:"default_expiration"`
 }
 
@@ -83,12 +84,14 @@ func NewRedisCache(redisConfig RedisConfig, cacheConfig CacheConfig, metrics Met
 		PoolTimeout: redisConfig.Timeout,
 	})
 
-	// Test connection.
-	ctx, cancel := context.WithTimeout(context.Background(), redisConfig.Timeout)
-	defer cancel()
+	// Test connection only if caching is enabled
+	if cacheConfig.IsEnabled {
+		ctx, cancel := context.WithTimeout(context.Background(), redisConfig.Timeout)
+		defer cancel()
 
-	if err := client.Ping(ctx).Err(); err != nil {
-		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
+		if err := client.Ping(ctx).Err(); err != nil {
+			return nil, fmt.Errorf("failed to connect to Redis: %w", err)
+		}
 	}
 
 	return &RedisCache{
@@ -96,6 +99,11 @@ func NewRedisCache(redisConfig RedisConfig, cacheConfig CacheConfig, metrics Met
 		config:  cacheConfig,
 		metrics: metrics,
 	}, nil
+}
+
+// isEnabled checks if cache is enabled.
+func (r *RedisCache) isEnabled() bool {
+	return r.config.IsEnabled
 }
 
 // generateCacheKey creates a cache key for a city.
@@ -107,6 +115,13 @@ func (r *RedisCache) generateCacheKey(city string) string {
 
 // Get retrieves weather data from Redis cache.
 func (r *RedisCache) Get(ctx context.Context, city string) (contracts.WeatherData, error) {
+
+	// Return cache miss immediately if caching is disabled.
+	if !r.isEnabled() {
+		r.metrics.IncCacheMisses()
+		return contracts.WeatherData{}, fmt.Errorf("cache disabled for city: %s", city)
+	}
+
 	key := r.generateCacheKey(city)
 
 	// Get data from Redis
@@ -131,6 +146,10 @@ func (r *RedisCache) Get(ctx context.Context, city string) (contracts.WeatherDat
 
 // Set stores weather data in Redis cache with expiration.
 func (r *RedisCache) Set(ctx context.Context, city string, data contracts.WeatherData, expiration time.Duration) error {
+	// Skip setting if caching is disabled.
+	if !r.isEnabled() {
+		return nil
+	}
 	key := r.generateCacheKey(city)
 
 	// Serialize data to JSON
@@ -154,6 +173,10 @@ func (r *RedisCache) Set(ctx context.Context, city string, data contracts.Weathe
 
 // Delete removes weather data from Redis cache.
 func (r *RedisCache) Delete(ctx context.Context, city string) error {
+	// Skip deletion if caching is disabled.
+	if !r.isEnabled() {
+		return nil // Silent skip, no error.
+	}
 	key := r.generateCacheKey(city)
 
 	if err := r.client.Del(ctx, key).Err(); err != nil {
@@ -165,6 +188,10 @@ func (r *RedisCache) Delete(ctx context.Context, city string) error {
 
 // Exists checks if weather data exists in Redis cache.
 func (r *RedisCache) Exists(ctx context.Context, city string) (bool, error) {
+	// Return false if caching is disabled
+	if !r.isEnabled() {
+		return false, nil
+	}
 	key := r.generateCacheKey(city)
 
 	count, err := r.client.Exists(ctx, key).Result()
@@ -185,12 +212,18 @@ func (r *RedisCache) Health(ctx context.Context) error {
 
 // Close closes the Redis connection.
 func (r *RedisCache) Close() error {
+	// Always attempt to close connection regardless of enabled state.
 	return r.client.Close()
 }
 
 // GetStats returns Redis cache statistics.
 func (r *RedisCache) GetStats(ctx context.Context) (map[string]interface{}, error) {
-	// Get Redis info
+	// Return empty stats if caching is disabled
+	if !r.isEnabled() {
+		return map[string]interface{}{
+			"cache_enabled": false,
+		}, nil
+	}
 	info, err := r.client.Info(ctx, "memory", "stats").Result()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Redis stats: %w", err)
