@@ -4,6 +4,12 @@ FROM golang:1.23-alpine as base
 # Install common dependencies
 RUN apk add --no-cache bash netcat-openbsd postgresql-client make git
 
+# Встановлюємо bash та make (якщо його немає), щоб уникнути проблем з оболонкою
+RUN apk add --no-cache bash make
+
+# Встановлюємо bash як стандартний шелл
+SHELL ["/bin/bash", "-c"]
+
 # Set working directory
 WORKDIR /app
 

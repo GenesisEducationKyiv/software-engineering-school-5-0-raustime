@@ -80,7 +80,7 @@ services:
       - REDIS_TIMEOUT_SECONDS=${REDIS_TIMEOUT_SECONDS}
       - BUNDEBUG=1
     working_dir: /app
-    command: ["make", "test-unit"]
+    command: ["/bin/bash", "-c", "make test-unit"]
     depends_on:
       db:
         condition: service_healthy
