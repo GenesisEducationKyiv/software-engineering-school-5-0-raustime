@@ -1,7 +1,7 @@
 
 services:
   db:
-    image: postgres:16
+    image: postgres:17.5
     env_file:
       - .env
     environment:
@@ -22,8 +22,6 @@ services:
 
   api:
     build: .
-    env_file:
-      - .env
     environment:
       - DB_URL=${DB_URL}
       - TEMPLATE_DIR=${TEMPLATE_DIR}
@@ -36,9 +34,6 @@ services:
       - REDIS_DB=${REDIS_DB}
       - REDIS_POOL_SIZE=${REDIS_POOL_SIZE}
       - REDIS_TIMEOUT_SECONDS=${REDIS_TIMEOUT_SECONDS}
-    working_dir: /app
-    entrypoint: ["/app/wait-for-postgres.sh"]
-    command: ["./app"]
     ports:
       - "8080:8080"
     restart: unless-stopped
@@ -64,8 +59,6 @@ services:
       - REDIS_POOL_SIZE=${REDIS_POOL_SIZE}
       - REDIS_TIMEOUT_SECONDS=${REDIS_TIMEOUT_SECONDS}
       - BUNDEBUG=1
-    working_dir: /app
-    entrypoint: ["/app/wait-for-postgres.sh"]
     command: ["make", "test-unit"]
     depends_on:
       - db
@@ -89,8 +82,6 @@ services:
       - REDIS_POOL_SIZE=${REDIS_POOL_SIZE}
       - REDIS_TIMEOUT_SECONDS=${REDIS_TIMEOUT_SECONDS}
       - BUNDEBUG=1
-    working_dir: /app
-    entrypoint: ["/app/wait-for-postgres.sh"]
     command: ["make", "test-integration"]
     depends_on:
       - db
@@ -106,9 +97,6 @@ services:
       - api
       - db
       - redis
-    #working_dir: /app
-    #entrypoint: ["/app/wait-for-postgres.sh"]
-    #command: ["make", "test-e2e"]
 
 volumes:
   weather-api-pgdata:
