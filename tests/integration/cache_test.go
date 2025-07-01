@@ -60,6 +60,7 @@ func TestRedisCache_Integration(t *testing.T) {
 	}
 
 	cacheConfig := cache.CacheConfig{
+		IsEnabled:         true,
 		DefaultExpiration: 1 * time.Minute,
 	}
 

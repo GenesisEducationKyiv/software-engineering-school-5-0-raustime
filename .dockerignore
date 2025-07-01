@@ -11,10 +11,6 @@ docker-compose*
 README.md
 *.md
 
-# Tests (for production builds)
-*_test.go
-tests/
-
 # Temporary files
 *.tmp
 *.log

@@ -1,8 +1,10 @@
+SHELL := /bin/bash
+
 .PHONY: test-unit test-integration test-e2e test-all
 
 test-unit:
 	@echo "Running unit tests..."
-	@go test -v $(go list ./... | grep -vE '/tests/(integration|e2e)') 2>/dev/null || go test -v ./cmd ./internal/...
+	@bash -c 'go test -v $$(go list ./... | grep -vE "/tests/(integration|e2e)") 2>/dev/null || go test -v ./cmd ./internal/...'
 
 test-integration:
 	@if [ -d "./tests/integration" ]; then \
