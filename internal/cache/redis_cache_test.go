@@ -64,8 +64,11 @@ func (m *MockRedis) PoolStats() *redis.PoolStats {
 func TestRedisCache_SetAndGet(t *testing.T) {
 	mockRedis := new(MockRedis)
 	cache := &RedisCache{
-		client:  mockRedis,
-		config:  CacheConfig{DefaultExpiration: 10 * time.Minute},
+		client: mockRedis,
+		config: CacheConfig{
+			IsEnabled:         true,
+			DefaultExpiration: 10 * time.Minute,
+		},
 		metrics: NoopMetrics{},
 	}
 

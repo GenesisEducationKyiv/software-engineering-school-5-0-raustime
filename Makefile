@@ -1,17 +1,21 @@
 .PHONY: test-unit test-integration test-e2e test-all
 
-UNIT_PACKAGES := $(shell go list ./... | grep -vE '/tests/(integration|e2e)')
-INTEGRATION_PACKAGES := $(shell go list ./tests/integration/...)
-E2E_PACKAGES := $(shell go list ./tests/e2e/...)
-
 test-unit:
-	go test -v $(UNIT_PACKAGES)
+	go test -v $$(go list ./... | grep -vE '/tests/(integration|e2e)')
 
 test-integration:
-	go test -v $(INTEGRATION_PACKAGES)
+	@if [ -d "./tests/integration" ]; then \
+		go test -v ./tests/integration/...; \
+	else \
+		echo "No integration tests directory found"; \
+	fi
 
 test-e2e:
-	go test -v $(E2E_PACKAGES)
+	@if [ -d "./tests/e2e" ]; then \
+		go test -v ./tests/e2e/...; \
+	else \
+		echo "No e2e tests directory found"; \
+	fi
 
 test-all:
 	go test -v ./...
