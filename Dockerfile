@@ -1,38 +1,48 @@
 # syntax=docker/dockerfile:1
-FROM golang:1.23
+FROM golang:1.23-alpine as base
 
-# Встановлюємо bash, netcat, postgresql-client
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends bash netcat-openbsd postgresql-client && \
-    rm -rf /var/lib/apt/lists/*
+# Install common dependencies
+RUN apk add --no-cache bash netcat-openbsd postgresql-client make git
 
-# Робоча директорія всередині контейнера
+# Встановлюємо bash та make (якщо його немає), щоб уникнути проблем з оболонкою
+RUN apk add --no-cache bash make
+
+# Встановлюємо bash як стандартний шелл
+SHELL ["/bin/bash", "-c"]
+
+# Set working directory
 WORKDIR /app
 
-# Скрипт очікування PostgreSQL
-RUN echo '#!/bin/bash\n\
-    set -e\n\
-    host="${PGHOST:-db}"\n\
-    port="${PGPORT:-5432}"\n\
-    user="${PGUSER:-postgres}"\n\
-    \n\
-    echo "Waiting for PostgreSQL at $host:$port as user $user..."\n\
-    until pg_isready -h "$host" -p "$port" -U "$user"; do\n\
-    sleep 1\n\
-    done\n\
-    echo "PostgreSQL is up. Running command: $@"\n\
-    exec "$@"' > /app/wait-for-postgres.sh && chmod +x /app/wait-for-postgres.sh
-
-# Копіюємо go.mod та go.sum — кешування залежностей
+# Copy go.mod and go.sum for dependency caching
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Копіюємо решту коду
+# Copy the rest of the code
 COPY . .
 
-# Збірка бінарника
-RUN go build -o app ./cmd && chmod +x ./app
+# Test target - keeps full Go environment for running tests
+FROM base as test
+CMD ["make", "test"]
 
-# Встановлення entrypoint та команд за замовчуванням
-ENTRYPOINT ["/app/wait-for-postgres.sh"]
-CMD ["./app"]
+# Builder target - compiles the production binary
+FROM base as builder
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o app ./cmd
+
+# Production target
+FROM alpine:latest as production
+
+# Install minimal runtime dependencies
+RUN apk --no-cache add ca-certificates
+
+WORKDIR /app
+
+# Copy binary from builder
+COPY --from=builder /app/app .
+
+# Copy entire project (excluding build artifacts via .dockerignore)
+COPY --from=base /app .
+
+# Ensure binary is executable
+RUN chmod +x ./app
+
+CMD ["/app/app"]

@@ -14,6 +14,7 @@ import (
 	"github.com/uptrace/bun/extra/bundebug"
 
 	"weatherapi/internal/adapters"
+	"weatherapi/internal/cache"
 	"weatherapi/internal/config"
 	"weatherapi/internal/db/migration"
 	"weatherapi/internal/db/repositories"
@@ -36,11 +37,11 @@ type Container struct {
 	Router              http.Handler
 }
 
-// BuildContainer створює всі залежності і повертає контейнер
+// BuildContainer створює всі залежності і повертає контейнер.
 func BuildContainer() (Container, error) {
 	_ = godotenv.Load()
 
-	// Load config
+	// Load config.
 	cfg, err := config.Load()
 	if err != nil {
 		return Container{}, fmt.Errorf("config load failed: %w", err)
@@ -49,13 +50,13 @@ func BuildContainer() (Container, error) {
 		return Container{}, fmt.Errorf("config validation failed: %w", err)
 	}
 
-	// Init DB
+	// Init DB.
 	db, err := initDatabase(cfg)
 	if err != nil {
 		return Container{}, fmt.Errorf("database init failed: %w", err)
 	}
 
-	// Run migrations
+	// Run migrations.
 	mr := migration.NewRunner(db, "migrations")
 	if err := mr.RunMigrations(context.Background()); err != nil {
 		return Container{}, fmt.Errorf("migrations failed: %w", err)
@@ -63,7 +64,7 @@ func BuildContainer() (Container, error) {
 
 	subscriptionRepo := repositories.NewSubscriptionRepo(db)
 
-	// Init Weather API adapters with config
+	// Init Weather API adapters with config.
 	openWeatherAdapter, err := adapters.NewOpenWeatherAdapter(cfg.OpenWeatherKey)
 	if err != nil {
 		return Container{}, fmt.Errorf("failed to create adapter: %w", err)
@@ -73,20 +74,52 @@ func BuildContainer() (Container, error) {
 	if err != nil {
 		return Container{}, fmt.Errorf("failed to create adapter: %w", err)
 	}
-
-	// Create logger
+	// Create logger.
 	logger := logging.NewFileWeatherLogger("weather_providers.log")
 
 	openWeatherHandler := chain.NewBaseWeatherHandler(&openWeatherAdapter, "openweathermap.org")
 	weatherAPIHandler := chain.NewBaseWeatherHandler(&weatherAPIAdapter, "weatherapi.com")
 
-	// Set up the chain: OpenWeather -> WeatherAPI
+	// Set up the chain: OpenWeather -> WeatherAPI.
 	openWeatherHandler.SetNext(weatherAPIHandler)
 
 	weatherChain := chain.NewWeatherChain(logger)
 	weatherChain.SetFirstHandler(openWeatherHandler)
 
-	weatherService := weather_service.NewWeatherService(weatherChain)
+	// Register metrics.
+	metrics := cache.NewPrometheusMetrics()
+	metrics.Register()
+
+	// Init Redis cache.
+	var redisCache cache.WeatherCache
+	if cfg.Cache.Enabled {
+		redisCache, err = cache.NewRedisCache(
+			cache.RedisConfig{
+				Addr:     cfg.Cache.Redis.Addr,
+				Password: cfg.Cache.Redis.Password,
+				DB:       cfg.Cache.Redis.DB,
+				PoolSize: cfg.Cache.Redis.PoolSize,
+				Timeout:  cfg.Cache.Redis.Timeout,
+			},
+			cache.CacheConfig{
+				IsEnabled:         cfg.Cache.Enabled,
+				DefaultExpiration: cfg.Cache.Expiration,
+			},
+			metrics,
+		)
+		if err != nil {
+			return Container{}, fmt.Errorf("failed to initialize Redis cache: %w", err)
+		}
+	} else {
+		redisCache = cache.NoopWeatherCache{}
+	}
+
+	// Weather service.
+	weatherService := weather_service.NewWeatherService(
+		weatherChain,
+		redisCache,
+		cfg.Cache.Expiration,
+	)
 	mailerService := mailer_service.NewMailerService(mailer_service.NewSMTPSender(cfg.SMTPUser, cfg.SMTPPassword, cfg.SMTPHost, strconv.Itoa(cfg.SMTPPort)), cfg.AppBaseURL)
 
 	subscriptionService := subscription_service.New(subscriptionRepo, mailerService)
@@ -104,7 +137,7 @@ func BuildContainer() (Container, error) {
 	}, nil
 }
 
-// initDatabase sets up Bun with PostgreSQL
+// initDatabase sets up Bun with PostgreSQL.
 func initDatabase(cfg *config.Config) (*bun.DB, error) {
 	sqlDB, err := sql.Open("pg", cfg.GetDatabaseURL())
 	if err != nil {
@@ -117,7 +150,7 @@ func initDatabase(cfg *config.Config) (*bun.DB, error) {
 		db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
 	}
 
-	if err := db.Ping(); err != nil {
+	if err := db.PingContext(context.Background()); err != nil {
 		return nil, err
 	}
 

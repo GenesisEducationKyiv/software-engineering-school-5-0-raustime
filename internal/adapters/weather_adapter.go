@@ -53,7 +53,7 @@ func (a *WeatherAPIAdapter) FetchWeather(ctx context.Context, city string) (cont
 	if err != nil {
 		return contracts.WeatherData{}, fmt.Errorf("failed to get weather from WeatherAPI: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	log.Printf("WeatherAPI status: %s (%d)", resp.Status, resp.StatusCode)
 

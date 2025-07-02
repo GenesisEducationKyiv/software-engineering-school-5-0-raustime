@@ -1,0 +1,41 @@
+run:
+  timeout: 15m  # Збільшено таймаут
+  tests: true
+  # Видалено modules-download-mode: readonly
+  issues-exit-code: 1
+  # Додано для оптимізації
+  concurrency: 2
+  skip-dirs:
+    - vendor
+  skip-files:
+    - ".*\\.pb\\.go$"
+
+linters:
+  enable:
+    - gofmt
+    - goimports
+    - govet
+    - ineffassign
+    - misspell
+    - revive
+    # Тимчасово відключено найповільніші лінтери
+    # - typecheck
+    # - staticcheck
+  disable:
+    - errcheck # Can be noisy in tests
+
+linters-settings:
+  govet:
+    check-shadowing: true
+  revive:
+    min-confidence: 0.8
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: .*_test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec

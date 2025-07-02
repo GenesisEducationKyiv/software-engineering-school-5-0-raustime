@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/mail"
@@ -12,19 +13,19 @@ import (
 	"weatherapi/internal/services/subscription_service"
 )
 
-// SubscriptionHandler handles subscription-related requests
+// SubscriptionHandler handles subscription-related requests.
 type SubscriptionHandler struct {
 	subscriptionService subscription_service.SubscriptionService
 }
 
-// NewSubscriptionHandler creates a new subscription handler
+// NewSubscriptionHandler creates a new subscription handler.
 func NewSubscriptionHandler(subscriptionService subscription_service.SubscriptionService) SubscriptionHandler {
 	return SubscriptionHandler{
 		subscriptionService: subscriptionService,
 	}
 }
 
-// Subscribe handles subscription requests
+// Subscribe handles subscription requests.
 func (h SubscriptionHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 	var req contracts.SubscriptionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -39,10 +40,9 @@ func (h SubscriptionHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 
 	err := h.subscriptionService.Create(r.Context(), req.Email, req.City, req.Frequency)
 	if err != nil {
-		switch err {
-		case apierrors.ErrAlreadySubscribed:
+		if errors.Is(err, apierrors.ErrAlreadySubscribed) {
 			http.Error(w, "Email already subscribed", http.StatusConflict)
-		default:
+		} else {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 		}
 		return
@@ -51,7 +51,7 @@ func (h SubscriptionHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// Confirm handles subscription confirmation
+// Confirm handles subscription confirmation.
 func (h *SubscriptionHandler) Confirm(w http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
 	if token == "" {
@@ -60,10 +60,10 @@ func (h *SubscriptionHandler) Confirm(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.subscriptionService.Confirm(r.Context(), token); err != nil {
-		switch err {
-		case apierrors.ErrSubscriptionNotFound:
+		switch {
+		case errors.Is(err, apierrors.ErrSubscriptionNotFound):
 			http.Error(w, "Subscription not found", http.StatusNotFound)
-		case apierrors.ErrInvalidToken:
+		case errors.Is(err, apierrors.ErrInvalidToken):
 			http.Error(w, "Invalid token", http.StatusBadRequest)
 		default:
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -74,7 +74,7 @@ func (h *SubscriptionHandler) Confirm(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// Unsubscribe handles unsubscription
+// Unsubscribe handles unsubscription.
 func (h *SubscriptionHandler) Unsubscribe(w http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
 	if token == "" {
@@ -83,10 +83,10 @@ func (h *SubscriptionHandler) Unsubscribe(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := h.subscriptionService.Delete(r.Context(), token); err != nil {
-		switch err {
-		case apierrors.ErrSubscriptionNotFound:
+		switch {
+		case errors.Is(err, apierrors.ErrSubscriptionNotFound):
 			http.Error(w, "Subscription not found", http.StatusNotFound)
-		case apierrors.ErrInvalidToken:
+		case errors.Is(err, apierrors.ErrInvalidToken):
 			http.Error(w, "Invalid token", http.StatusBadRequest)
 		default:
 			http.Error(w, "Internal server error", http.StatusInternalServerError)

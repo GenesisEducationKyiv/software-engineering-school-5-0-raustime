@@ -1,7 +1,6 @@
-
 services:
   db:
-    image: postgres:16
+    image: postgres:17.5
     env_file:
       - .env
     environment:
@@ -14,9 +13,27 @@ services:
     ports:
       - '5432:5432'
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   api:
-    build: .
+    build:
+      context: .
+      target: production
     env_file:
       - .env
     environment:
@@ -26,17 +43,26 @@ services:
       - PGPASSWORD=${PGPASSWORD}
       - PGHOST=db
       - PGPORT=5432
-    working_dir: /app
-    entrypoint: ["/app/wait-for-postgres.sh"]
-    command: ["./app"]
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_DB=${REDIS_DB}
+      - REDIS_POOL_SIZE=${REDIS_POOL_SIZE}
+      - REDIS_TIMEOUT_SECONDS=${REDIS_TIMEOUT_SECONDS}
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
+      - WEATHER_API_KEY=${WEATHER_API_KEY}
     ports:
       - "8080:8080"
     restart: unless-stopped
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   test-runner-unit:
-    build: .
+    build:
+      context: .
+      target: test
     env_file:
       - .env.test
     environment:
@@ -47,15 +73,26 @@ services:
       - PGPASSWORD=${PGPASSWORD}
       - PGHOST=db
       - PGPORT=5432
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_DB=${REDIS_DB}
+      - REDIS_POOL_SIZE=${REDIS_POOL_SIZE}
+      - REDIS_TIMEOUT_SECONDS=${REDIS_TIMEOUT_SECONDS}
       - BUNDEBUG=1
     working_dir: /app
-    entrypoint: ["/app/wait-for-postgres.sh"]
-    command: ["make", "test-unit"]
+    command: ["/bin/bash", "-c", "make test-unit"]
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    profiles:
+      - testing
   
   test-runner-integration:
-    build: .
+    build:
+      context: .
+      target: test
     env_file:
       - .env.test
     environment:
@@ -66,12 +103,21 @@ services:
       - PGPASSWORD=${PGPASSWORD}
       - PGHOST=db
       - PGPORT=5432
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_DB=${REDIS_DB}
+      - REDIS_POOL_SIZE=${REDIS_POOL_SIZE}
+      - REDIS_TIMEOUT_SECONDS=${REDIS_TIMEOUT_SECONDS}
       - BUNDEBUG=1
     working_dir: /app
-    entrypoint: ["/app/wait-for-postgres.sh"]
     command: ["make", "test-integration"]
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    profiles:
+      - testing
 
   test-runner-e2e:
     build:
@@ -80,11 +126,14 @@ services:
     environment:
       - APP_BASE_URL=http://api:8080
     depends_on:
-      - api
-      - db
-    #working_dir: /app
-    #entrypoint: ["/app/wait-for-postgres.sh"]
-    #command: ["make", "test-e2e"]
+      api:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    profiles:
+      - testing
 
 volumes:
   weather-api-pgdata:

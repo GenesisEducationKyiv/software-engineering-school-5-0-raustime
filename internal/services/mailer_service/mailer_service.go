@@ -10,41 +10,41 @@ import (
 	"weatherapi/internal/contracts"
 )
 
-// MailerService defines mailer service interface
+// MailerService defines mailer service interface.
 type MailerServiceProvider interface {
 	SendConfirmationEmail(ctx context.Context, email, token string) error
 	SendWeatherEmail(ctx context.Context, email, city string, weather contracts.WeatherData, token string) error
 }
 
-// MailerService implements MailerServiceProvider
+// MailerService implements MailerServiceProvider.
 type MailerService struct {
 	emailSender contracts.EmailSenderProvider
 	appBaseURL  string
 	TemplateDir string
 }
 
-// NewMailerService creates a new mailer service
-// NewMailerService creates a new mailer service with automatic sender selection based on config
+// NewMailerService creates a new mailer service.
+// NewMailerService creates a new mailer service with automatic sender selection based on config.
 func NewMailerService(emailSender contracts.EmailSenderProvider, baseURL string) MailerService {
 
 	return MailerService{
 		emailSender: emailSender,
 		appBaseURL:  baseURL,
-		TemplateDir: "internal/templates", // default template directory
+		TemplateDir: "internal/templates", // default template directory.
 	}
 }
 
-// SetTemplateDir sets custom template directory
+// SetTemplateDir sets custom template directory.
 func (s *MailerService) SetTemplateDir(dir string) {
 	s.TemplateDir = dir
 }
 
-// GetEmailSender returns the underlying email sender (useful for testing)
+// GetEmailSender returns the underlying email sender (useful for testing).
 func (s *MailerService) GetEmailSender() contracts.EmailSenderProvider {
 	return s.emailSender
 }
 
-// SendConfirmationEmail sends confirmation email
+// SendConfirmationEmail sends confirmation email.
 func (s MailerService) SendConfirmationEmail(ctx context.Context, email, token string) error {
 	link := fmt.Sprintf("%s/api/confirm/%s", s.appBaseURL, token)
 
@@ -62,7 +62,7 @@ func (s MailerService) SendConfirmationEmail(ctx context.Context, email, token s
 	return s.emailSender.Send(email, "Confirm your subscription", body)
 }
 
-// SendWeatherEmail sends weather update email
+// SendWeatherEmail sends weather update email.
 func (s MailerService) SendWeatherEmail(ctx context.Context, email, city string, weather contracts.WeatherData, token string) error {
 	data := struct {
 		City           string
@@ -87,7 +87,7 @@ func (s MailerService) SendWeatherEmail(ctx context.Context, email, city string,
 	return s.emailSender.Send(email, subject, body)
 }
 
-// renderTemplate renders HTML template with data
+// renderTemplate renders HTML template with data.
 func (s MailerService) renderTemplate(templateName string, data interface{}) (string, error) {
 	// In renderTemplate method, replace log.Printf with:
 

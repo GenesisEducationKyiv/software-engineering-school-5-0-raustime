@@ -7,7 +7,7 @@ import (
 	"weatherapi/internal/config"
 )
 
-// MockSender implements EmailSenderProvider for testing
+// MockSender implements EmailSenderProvider for testing.
 type MockSender struct {
 	mu           sync.Mutex
 	LastTo       string
@@ -18,21 +18,21 @@ type MockSender struct {
 	ErrorMessage string
 }
 
-// SentEmail represents a sent email for testing
+// SentEmail represents a sent email for testing.
 type SentEmail struct {
 	To      string
 	Subject string
 	Body    string
 }
 
-// NewMockSender creates a new mock email sender
+// NewMockSender creates a new mock email sender.
 func NewMockSender() *MockSender {
 	return &MockSender{
 		SentEmails: make([]SentEmail, 0),
 	}
 }
 
-// Send mocks sending an email and stores the data for verification
+// Send mocks sending an email and stores the data for verification.
 func (m *MockSender) Send(to, subject, body string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -42,15 +42,15 @@ func (m *MockSender) Send(to, subject, body string) error {
 		if errorMsg == "" {
 			errorMsg = "mock sender error"
 		}
-		return errors.New(errorMsg) // return після вкладеного if
+		return errors.New(errorMsg) // return після вкладеного if.
 	}
 
-	// Store for compatibility with existing tests
+	// Store for compatibility with existing tests.
 	m.LastTo = to
 	m.LastSubject = subject
 	m.LastBody = body
 
-	// Store in history for advanced testing
+	// Store in history for advanced testing.
 	m.SentEmails = append(m.SentEmails, SentEmail{
 		To:      to,
 		Subject: subject,
@@ -60,21 +60,21 @@ func (m *MockSender) Send(to, subject, body string) error {
 	return nil
 }
 
-// SetShouldFail configures the mock to return an error
+// SetShouldFail configures the mock to return an error.
 func (m *MockSender) SetShouldFail(shouldFail bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.ShouldFail = shouldFail
 }
 
-// SetErrorMessage sets custom error message
+// SetErrorMessage sets custom error message.
 func (m *MockSender) SetErrorMessage(msg string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.ErrorMessage = msg
 }
 
-// GetSentEmails returns all sent emails
+// GetSentEmails returns all sent emails.
 func (m *MockSender) GetSentEmails() []SentEmail {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -84,14 +84,14 @@ func (m *MockSender) GetSentEmails() []SentEmail {
 	return emails
 }
 
-// GetSentEmailsCount returns the number of sent emails
+// GetSentEmailsCount returns the number of sent emails.
 func (m *MockSender) GetSentEmailsCount() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return len(m.SentEmails)
 }
 
-// GetLastSentEmail returns the last sent email
+// GetLastSentEmail returns the last sent email.
 func (m *MockSender) GetLastSentEmail() *SentEmail {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -102,7 +102,7 @@ func (m *MockSender) GetLastSentEmail() *SentEmail {
 	return &m.SentEmails[len(m.SentEmails)-1]
 }
 
-// HasEmailBeenSentTo checks if an email was sent to the specified address
+// HasEmailBeenSentTo checks if an email was sent to the specified address.
 func (m *MockSender) HasEmailBeenSentTo(email string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -115,7 +115,7 @@ func (m *MockSender) HasEmailBeenSentTo(email string) bool {
 	return false
 }
 
-// HasEmailWithSubject checks if an email with the specified subject was sent
+// HasEmailWithSubject checks if an email with the specified subject was sent.
 func (m *MockSender) HasEmailWithSubject(subject string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -128,7 +128,7 @@ func (m *MockSender) HasEmailWithSubject(subject string) bool {
 	return false
 }
 
-// Clear clears the email history
+// Clear clears the email history.
 func (m *MockSender) Clear() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -139,7 +139,7 @@ func (m *MockSender) Clear() {
 	m.SentEmails = m.SentEmails[:0]
 }
 
-// Reset resets the mock to its initial state
+// Reset resets the mock to its initial state.
 func (m *MockSender) Reset() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -152,9 +152,9 @@ func (m *MockSender) Reset() {
 	m.ErrorMessage = ""
 }
 
-// Test helper functions
+// Test helper functions.
 
-// CreateTestConfig creates a standard test configuration
+// CreateTestConfig creates a standard test configuration.
 func CreateTestConfig() *config.Config {
 	return &config.Config{
 		AppBaseURL:   "https://test.com",
