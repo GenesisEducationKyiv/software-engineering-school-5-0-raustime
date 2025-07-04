@@ -1,6 +1,8 @@
 package contracts
 
-import "time"
+import (
+	"time"
+)
 
 type EmailSenderProvider interface {
 	Send(to, subject, htmlBody string) error

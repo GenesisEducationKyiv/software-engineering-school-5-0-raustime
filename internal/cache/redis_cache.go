@@ -46,6 +46,9 @@ type RedisCache struct {
 	metrics Metrics
 }
 
+// compile-time гарантія, що реалізує інтерфейс:
+var _ contracts.WeatherCache = (*RedisCache)(nil)
+
 // RedisConfig holds Redis connection configuration.
 type RedisConfig struct {
 	Addr     string        `json:"addr"`      // Redis server address (host:port).

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	api_errors "weatherapi/internal/apierrors"
-	"weatherapi/internal/cache"
 	"weatherapi/internal/contracts"
 	"weatherapi/internal/services/weather_service/chain"
 )
@@ -18,14 +17,14 @@ type WeatherServiceProvider interface {
 // WeatherService implements WeatherServiceProvider using Chain of Responsibility.
 type WeatherService struct {
 	weatherChain    *chain.WeatherChain
-	cache           cache.WeatherCache
+	cache           contracts.WeatherCache
 	cacheExpiration time.Duration
 }
 
 // NewWeatherService creates a new weatherService with the provided chain.
 func NewWeatherService(
 	weatherChain *chain.WeatherChain,
-	cache cache.WeatherCache,
+	cache contracts.WeatherCache,
 	cacheExpiration time.Duration,
 ) WeatherService {
 	return WeatherService{

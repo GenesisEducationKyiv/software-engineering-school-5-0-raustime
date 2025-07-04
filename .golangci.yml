@@ -1,6 +1,8 @@
 version: "2"
 run:
   tests: true
+  skip-dirs:
+    - tests/architecture  # Не лінтити архітектурні тести
 linters:
   enable:
     # Correctness / Bugs
