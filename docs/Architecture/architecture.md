@@ -36,16 +36,15 @@
 |  - Business Rules           |
 +-------------+--------------+
               |
-     +--------+--------+
-     |                 |
-     v                 v
-+-----------+   +------------------------+
-|  Database |   | Infrastructure         |
-| (Postgres)|   | - Weather Adapters     |
-| - Repos   |   | - Redis Cache          |
-| - Models  |   | - Mailer (SMTP)        |
-+-----------+   | - Config Loader        |
-                +------------------------+
+              v
++------------------------------------------------+
+|             Infrastructure Layer               |
+|  - Weather Adapters (OpenWeather, WeatherAPI)  |
+|  - Redis Cache                                 |
+|  - Mailer (SMTP + Templates)                   |
+|  - Configuration Loader                        |
+|  - Database Access (Bun ORM, Repositories)     |
++------------------------------------------------+
 
 Розподіл шарів
 
@@ -69,13 +68,10 @@ contracts.go, models/subscription.go
 
 4. Infrastructure Layer
 
-Інтеграція з Redis, зовнішніми API, SMTP, логування
-
-redis_cache.go, openweather_adapter.go, weather_adapter.go, weather_logger.go, mailer_service.go
-
-5. Data Layer
-
 Доступ до БД через bun
 
 subscription_repo.go, migration.go
 
+Інтеграція з Redis, зовнішніми API, SMTP, логування
+
+redis_cache.go, openweather_adapter.go, weather_adapter.go, weather_logger.go, mailer_service.go

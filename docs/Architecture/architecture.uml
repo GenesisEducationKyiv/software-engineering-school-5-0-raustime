@@ -1,0 +1,39 @@
+@startuml
+package "Presentation" {
+  class WeatherHandler
+  class SubscriptionHandler
+}
+
+package "Application" {
+  class WeatherService
+  class SubscriptionService
+  class Scheduler
+}
+
+package "Domain" {
+  class WeatherData
+  class Subscription
+}
+
+package "Infrastructure" {
+  class OpenWeatherAdapter
+  class WeatherAPIAdapter
+  class RedisCache
+  class MailerService
+  class SubscriptionRepo
+}
+
+WeatherHandler --> WeatherService
+SubscriptionHandler --> SubscriptionService
+
+WeatherService --> OpenWeatherAdapter
+WeatherService --> WeatherAPIAdapter
+WeatherService --> RedisCache
+
+Scheduler --> WeatherService
+Scheduler --> MailerService
+Scheduler --> SubscriptionService
+
+SubscriptionService --> SubscriptionRepo
+SubscriptionService --> MailerService
+@enduml
