@@ -1,4 +1,4 @@
-module mailer-service
+module mailer-service-nats
 
 go 1.23.0
 
