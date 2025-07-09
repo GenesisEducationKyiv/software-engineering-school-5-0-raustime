@@ -43,3 +43,8 @@ docker-compose --profile testing run --rm test-runner-e2e
 ## Зупиняємо все
 
 docker-compose down
+
+## Тестування архітектури
+
+go test -v -timeout 2m ./docs/Architecture/tests/
+

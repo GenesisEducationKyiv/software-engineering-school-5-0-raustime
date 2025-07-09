@@ -9,7 +9,7 @@ import (
 )
 
 func TestNoopWeatherCache(t *testing.T) {
-	var c WeatherCache = NoopWeatherCache{}
+	var c contracts.WeatherCache = NoopWeatherCache{}
 	ctx := context.Background()
 
 	t.Run("Get returns cache miss error", func(t *testing.T) {

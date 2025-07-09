@@ -1,4 +1,4 @@
-package di
+package bootstrap
 
 import (
 	"context"
@@ -16,6 +16,7 @@ import (
 	"weatherapi/internal/adapters"
 	"weatherapi/internal/cache"
 	"weatherapi/internal/config"
+	"weatherapi/internal/contracts"
 	"weatherapi/internal/db/migration"
 	"weatherapi/internal/db/repositories"
 	"weatherapi/internal/jobs"
@@ -91,7 +92,7 @@ func BuildContainer() (Container, error) {
 	metrics.Register()
 
 	// Init Redis cache.
-	var redisCache cache.WeatherCache
+	var redisCache contracts.WeatherCache
 	if cfg.Cache.Enabled {
 		redisCache, err = cache.NewRedisCache(
 			cache.RedisConfig{

@@ -122,62 +122,49 @@ SDD служить основним довідковим документом д
 
 ### 3.1 Архітектурний дизайн
 
-Система реалізована за принципом **Layered Architecture** з елементами **Clean Architecture**. Чіткий розподіл на шари з інверсією залежностей.
+Архітектура системи — це чітко виражена багатошарова архітектура (**Layered Architecture**), із використанням принципів чистої архітектури (**Clean Architecture**) та шаблонів розробки.
 
 ```text
-┌─────────────────────────┐
-│    Frontend Module      │
-│      (Vue.js SPA)       │
-│  • Weather Dashboard    │
-│  • Subscription Mgmt    │
-│  • User Interface       │
-└─────────┬───────────────┘
-          │ HTTP/REST API
-          ▼
-┌─────────────────────────┐
-│   Presentation Layer    │
-│    (Go HTTP Handlers)   │
-│  • Weather Controller   │
-│  • Subscription API     │
-│  • Request Validation   │
-└─────────┬───────────────┘
-          │
-          ▼
-┌─────────────────────────┐
-│   Application Layer     │
-│    (Business Logic)     │
-│  • App Orchestration    │
-│  • Weather Jobs         │
-│  • Subscription Logic   │
-└─────────┬───────────────┘
-          │
-          ▼
-┌─────────────────────────┐
-│     Domain Layer        │
-│    (Core Models)        │
-│  • Subscription Entity  │
-│  • Business Rules       │
-└─────────┬───────────────┘
-          │
-    ┌─────┴─────┐
-    ▼           ▼
-┌─────────┐ ┌─────────────────────┐
-│Database │ │  Infrastructure     │
-│ Module  │ │     Modules         │
-│(PostSQL)│ ├─────────────────────┤
-│• Models │ │ Email Service       │
-│• Repos  │ │ • SMTP Client       │
-│• Migrate│ │ • HTML Templates    │
-└─────────┘ │ • Mock Testing      │
-            ├─────────────────────┤
-            │ Weather API Module  │
-            │ • HTTP Client       │
-            │ • Data Transform    │
-            ├─────────────────────┤
-            │ Configuration       │
-            │ • Environment Vars  │
-            │ • Service Settings  │
-            └─────────────────────┘
++-----------------------------+
+|      Frontend (Vue.js)     |
+| - Weather Dashboard        |
+| - Subscription Mgmt        |
++-------------+--------------+
+              |
+              v
++-----------------------------+
+|  Presentation Layer         |
+|  - WeatherHandler           |
+|  - SubscriptionHandler      |
+|  - Middleware (CORS, etc.) |
++-------------+--------------+
+              |
+              v
++-----------------------------+
+|  Application Layer          |
+|  - WeatherService           |
+|  - SubscriptionService      |
+|  - Scheduler (jobs)         |
++-------------+--------------+
+              |
+              v
++-----------------------------+
+|  Domain Layer               |
+|  - WeatherData              |
+|  - Subscription             |
+|  - Business Rules           |
++-------------+--------------+
+              |
+     +--------+--------+
+     |                 |
+     v                 v
++-----------+   +------------------------+
+|  Database |   | Infrastructure         |
+| (Postgres)|   | - Weather Adapters     |
+| - Repos   |   | - Redis Cache          |
+| - Models  |   | - Mailer (SMTP)        |
++-----------+   | - Config Loader        |
+                +------------------------+
 ```
 
 **Основні підсистеми:**
@@ -237,9 +224,9 @@ Backend -> User: Confirmation success page
    - Переваги: Стандартизований підхід, легкість інтеграції, кешування HTTP відповідей
    - Альтернативи: GraphQL надав би більше гнучкості, але додав би складності
 
-3. **In-Memory кеширування**
-   - Переваги: Швидкість доступу, простота реалізації, відсутність зовнішніх залежностей
-   - Альтернативи: Redis забезпечив би персистентність та розподіленість, але додав би складності деплойменту
+3. **Redis кеширування**
+   - Переваги: Швидкість доступу, простота реалізації, персистентність та розподіленість
+   - Альтернативи: Швидкість доступу, простота реалізації
 
 4. **Go Goroutines для планування**
    - Переваги: Вбудована конкурентність, ефективність, відсутність зовнішніх залежностей

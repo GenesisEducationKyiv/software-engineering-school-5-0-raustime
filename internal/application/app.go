@@ -13,8 +13,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/uptrace/bun"
 
+	bootstrap "weatherapi/cmd/bootstrap/di"
 	"weatherapi/internal/config"
-	"weatherapi/internal/di"
 	"weatherapi/internal/jobs"
 	"weatherapi/internal/services/mailer_service"
 	"weatherapi/internal/services/subscription_service"
@@ -34,7 +34,7 @@ type App struct {
 // create new app instance.
 
 func New() (*App, error) {
-	container, err := di.BuildContainer()
+	container, err := bootstrap.BuildContainer()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build container: %w", err)
 	}
