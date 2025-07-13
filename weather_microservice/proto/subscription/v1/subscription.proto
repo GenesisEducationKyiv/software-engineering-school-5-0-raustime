@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package subscription.v1;
+
+option go_package = "weather_microservice/gen/go/subscription/v1;subscriptionv1";
+
+import "google/protobuf/timestamp.proto";
+
+service SubscriptionService {
+  rpc Create (CreateRequest) returns (CreateResponse) {}
+  rpc Confirm (ConfirmRequest) returns (ConfirmResponse) {}
+  rpc Delete (DeleteRequest) returns (DeleteResponse) {}
+  rpc GetConfirmed (GetConfirmedRequest) returns (GetConfirmedResponse) {}
+}
+
+message CreateRequest {
+  string email = 1;
+  string city  = 2;
+  string frequency = 3;
+}
+
+message CreateResponse {}
+
+message ConfirmRequest {
+  string token = 1;
+}
+
+message ConfirmResponse {}
+
+message DeleteRequest {
+  string token = 1;
+}
+
+message DeleteResponse {}
+
+message GetConfirmedRequest {
+  string frequency = 1;
+}
+
+message GetConfirmedResponse {
+  repeated Subscription subscriptions = 1;
+}
+
+message Subscription {
+  uint64 id = 1;
+  string email = 2;
+  string city = 3;
+  string frequency = 4;
+  string token = 5;
+  bool confirmed = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp confirmed_at = 8;
+}

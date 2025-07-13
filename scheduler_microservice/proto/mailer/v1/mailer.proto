@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package mailer.v1;
+
+option go_package = "scheduler_microservice/gen/go/mailer/v1;mailerv1";
+
+// EmailRequest для стрімової відправки
+message EmailRequest {
+  string request_id = 1;
+  string to = 2;
+  string city = 3;
+  string description = 4;
+  float temperature = 5;
+  float humidity = 6;
+  string token = 7;
+}
+
+// EmailStatusResponse є статус доставки для кожного EmailRequest
+message EmailStatusResponse {
+  string request_id = 1;
+  bool delivered = 2;
+  string error = 3;
+}
+
+service MailerService {
+  // Bidi streaming: на коже EmailRequest відповідь EmailStatusResponse
+  rpc SendEmails(stream EmailRequest) returns (stream EmailStatusResponse);
+}
