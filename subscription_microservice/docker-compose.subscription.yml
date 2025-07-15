@@ -1,0 +1,40 @@
+services:
+  subscription-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: subscription_service
+    ports:
+      - "8090:8090"
+      - "8091:8091"
+    environment:
+      - GRPC_PORT=8090
+      - HTTP_PORT=8091
+      - OPENWEATHER_API_KEY=647bab43e62f0270d7c22658bd452cc0
+      - WEATHER_API_KEY=ee532c4f8506474c8cc163802252106
+      - ENVIRONMENT=dev
+      - CACHE_ENABLED=false
+      - DB_URL=postgres://postgres:postgres@subscription-db:5432/subscription?sslmode=disable
+    depends_on:
+      subscription-db:
+        condition: service_healthy
+
+  subscription-db:
+    image: postgres:17
+    container_name: subscription_db
+    environment:
+      POSTGRES_DB: subscription
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - subscription_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  subscription_db_data:

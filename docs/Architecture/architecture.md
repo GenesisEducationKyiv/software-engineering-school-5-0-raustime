@@ -1,4 +1,4 @@
-Архітектура Weather-API
+# Архітектура Weather-API
 
 Цей документ описує архітектуру погодного API-додатку, який реалізований на Go і надає функціональність отримання поточних погодних умов та систему підписок з email-розсилкою.
 
@@ -54,19 +54,19 @@
 
 router.go, middleware.go, weather_handler.go, subscription_handler.go
 
-2. Application Layer
+1. Application Layer
 
 Реалізує бізнес-логіку, оркеструє виклики між компонентами
 
 weather_service.go, subscription_service.go, mailer_service.go, scheduler.go
 
-3. Domain Layer
+1. Domain Layer
 
 Містить основні сутності та контракти: WeatherData, Subscription, apierrors
 
 contracts.go, models/subscription.go
 
-4. Infrastructure Layer
+1. Infrastructure Layer
 
 Доступ до БД через bun
 

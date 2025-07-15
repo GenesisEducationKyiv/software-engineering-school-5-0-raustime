@@ -1,0 +1,13 @@
+services:
+  mailer:
+    build: .
+    container_name: mailer_service
+    ports:
+      - "8089:8089"
+    environment:
+      - PORT=8089
+      - APP_BASE_URL=http://localhost:8089
+      - SMTP_HOST=smtp.example.com
+      - SMTP_PORT=587
+      - SMTP_USER=test@example.com
+      - SMTP_PASSWORD=pass123

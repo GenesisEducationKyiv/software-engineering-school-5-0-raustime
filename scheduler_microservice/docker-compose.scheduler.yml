@@ -1,0 +1,23 @@
+version: '3.9'
+
+services:
+  scheduler-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: scheduler-service
+    ports:
+      - "${SCHEDULER_PORT:-8092}:${SCHEDULER_PORT:-8092}"
+    environment:
+      - SCHEDULER_PORT=${SCHEDULER_PORT}
+      - MAILER_SERVICE_URL=${MAILER_SERVICE_URL}
+      - SUBSCRIPTION_SERVICE_URL=${SUBSCRIPTION_SERVICE_URL}
+      - WEATHER_SERVICE_URL=${WEATHER_SERVICE_URL}
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:${SCHEDULER_PORT}/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
