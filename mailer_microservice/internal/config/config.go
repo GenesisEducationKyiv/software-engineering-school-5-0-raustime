@@ -14,6 +14,7 @@ type Config struct {
 	SMTPPort     int
 	SMTPUser     string
 	SMTPPassword string
+	TemplateDir  string 
 	Environment  string
 }
 
@@ -33,6 +34,7 @@ func Load() *Config {
 		SMTPPort:     smtpPort,
 		SMTPUser:     getEnv("SMTP_USER", ""),
 		SMTPPassword: getEnv("SMTP_PASSWORD", ""),
+		TemplateDir: getEnv("TEMPLATE_DIR", "internal/templates"),
 		Environment:  strings.ToLower(getEnv("ENVIRONMENT", "development")),
 	}
 }

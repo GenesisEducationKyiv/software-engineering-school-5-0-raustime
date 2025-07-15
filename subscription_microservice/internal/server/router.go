@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"log"
 
 	"connectrpc.com/grpcreflect"
 	"google.golang.org/grpc"
@@ -52,6 +53,7 @@ func build(cfg *config.Config) (*http.ServeMux, *grpc.Server) {
 	path, connectHandler := subscriptionv1.NewSubscriptionServiceHandler(
 		handler.NewHandler(&subService),
 	)
+	log.Println("🔍 ConnectRPC path:", path) 
 	mux.Handle(path, connectHandler)
 
 	reflectPath, reflectHandler := grpcreflect.NewHandlerV1(

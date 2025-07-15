@@ -5,11 +5,15 @@ import (
 	"os"
 	"os/signal"
 	"scheduler_microservice/internal/application"
+	"scheduler_microservice/internal/health"
 	"syscall"
 )
 
 func main() {
 	app := application.NewApp()
+	// Start /health endpoint on 8092
+	health.StartHealthServer(app.GetConfig().Port)
+	
 	app.Run()
 
 	stop := make(chan os.Signal, 1)

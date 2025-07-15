@@ -52,9 +52,9 @@ func (s *Scheduler) run() {
 		case <-ticker.C:
 			now := time.Now()
 			if now.Minute() == 0 {
-				s.send("hourly")
+				s.Send("hourly")
 				if now.Hour() == 8 {
-					s.send("daily")
+					s.Send("daily")
 				}
 			}
 		case <-s.stopChan:
@@ -64,7 +64,7 @@ func (s *Scheduler) run() {
 	}
 }
 
-func (s *Scheduler) send(freq string) {
+func (s *Scheduler) Send(freq string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	subs, err := s.subSvc.GetConfirmed(ctx, freq)

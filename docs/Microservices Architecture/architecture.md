@@ -23,9 +23,8 @@
 
 ### Рекомендована комунікація (Mailer Service)
 
-→ Message Queue (asynchronous) NATS, RabbitMQ або Kafka
+→ Message Queue (asynchronous) NATS (швидка, легка, дуже проста інтеграція, підтримка retry)
 → gRPC / HTTP API (synchronous call)
-
 
 ---
 

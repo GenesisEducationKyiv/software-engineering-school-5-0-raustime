@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -29,6 +30,7 @@ func NewApp() *App {
 	)
 
 	mailer := mailer_service.NewMailerService(emailSender, cfg.AppBaseURL)
+	mailer.SetTemplateDir(cfg.TemplateDir)
 	router := server.NewRouter(mailer)
 
 	httpServer := &http.Server{
@@ -43,6 +45,7 @@ func NewApp() *App {
 }
 
 func (a *App) Run() error {
+	log.Printf("🚀 Starting mailer service on %s", a.server.Addr)
 	go func() {
 		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			panic(fmt.Errorf("server error: %w", err))

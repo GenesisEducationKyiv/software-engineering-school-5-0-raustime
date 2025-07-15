@@ -1,35 +1,40 @@
-# Makefile for building and running subscription_microservice with Docker
+# Makefile for subscription_service
 
-APP_NAME := subscription-service
-GO_VERSION := 1.23.5
+SHELL := /bin/bash
 
-.PHONY: build run compose up down migrate
+BINARY_NAME=subscription
+GRPC_PORT=8090
+HTTP_PORT=8091
 
-## Build Go binary using Docker
-build:
-	docker run --rm \
-	  -v $$(pwd):/app \
-	  -w /app \
-	  golang:$(GO_VERSION)-alpine \
-	  sh -c "go mod download && go build -o $(APP_NAME) ./cmd/main.go"
+# OS-based DB_HOST (auto-switch for host.docker.internal or 172.17.0.1)
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+	DB_HOST := 172.17.0.1
+else
+	DB_HOST := host.docker.internal
+endif
 
-## Run binary locally
-run:
-	./$(APP_NAME)
+.PHONY: docker-build docker-run docker-test docker-test-unit docker-test-integration clean lint
 
-## Start Docker Compose
-compose:
-	docker compose up --build
+docker-build:
+	docker build -t subscription_service .
 
-up:
-	docker compose up -d
+docker-run:
+	docker compose -f docker-compose.subscription.yml up --build
 
-down:
-	docker compose down
+docker-test:
+	docker run --rm -v $(PWD):/app -w /app golang:1.23 go test -v ./...
 
-## Apply SQL migrations with golang-migrate
-migrate:
-	docker run --rm -v $$(pwd)/migrations:/migrations \
-	  --network host \
-	  migrate/migrate \
-	  -path=/migrations -database "postgres://postgres:postgres@localhost:5432/subscriptions?sslmode=disable" up
+docker-test-unit:
+	docker run --rm -v $(PWD):/app -w /app golang:1.23 \
+	  bash -c 'go test -v $$(go list ./... | grep -vE "/tests/(integration|e2e)")'
+	  
+docker-test-integration:
+	docker run --rm -v $(PWD):/app -w /app golang:1.23 \
+	  bash -c 'if [ -d ./tests/integration ]; then go test -v ./tests/integration/...; else echo "No integration tests directory found"; fi'
+
+lint:
+	golangci-lint run ./...
+
+clean:
+	rm -f $(BINARY_NAME)

@@ -1,38 +1,30 @@
-# --- Builder Stage ---
-FROM golang:1.23.5-alpine AS builder
+# ---- build stage ----
+FROM golang:1.23 AS builder
 
 WORKDIR /app
-
-# Встановлення залежностей
-COPY go.mod go.sum ./
+COPY go.mod ./
+COPY go.sum ./
 RUN go mod download
 
-# Копіюємо вихідний код
 COPY . .
+COPY migrations ./migrations
 
-# Компіляція
-RUN go build -o /subscription-service ./cmd/main.go
+# 🔧 Назва бінарника — subscription
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o subscription ./cmd/main.go
 
-# --- Runtime Stage ---
-FROM alpine:latest
+# ---- run stage ----
+FROM gcr.io/distroless/static:nonroot
 
 WORKDIR /app
 
-# Додати базові системні залежності
-RUN apk add --no-cache ca-certificates
+# Бінарник і, за потреби, міграції або шаблони
+COPY --from=builder /app/subscription /app/subscription
+COPY --from=builder /app/migrations /app/migrations
 
-# Копіюємо зібраний бінарник
-COPY --from=builder /subscription-service .
+ENV GRPC_PORT=8090
+ENV HTTP_PORT=8091
 
-# Конфігурація за замовчуванням (може бути перевизначена через docker-compose або ENV)
-ENV PORT=8080 \
-    GATEWAY_PORT=8081 \
-    DB_HOST=db \
-    DB_PORT=5432 \
-    DB_USER=postgres \
-    DB_PASSWORD=postgres \
-    DB_NAME=subscriptions \
-    MAILER_GRPC_ADDR=http://mailer:8080
+EXPOSE 8090
+EXPOSE 8091
 
-# Запуск сервісу
-ENTRYPOINT ["./subscription-service"]
+ENTRYPOINT ["/app/subscription"]

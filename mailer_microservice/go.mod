@@ -1,6 +1,6 @@
 module mailer_microservice
 
-go 1.23.5
+go 1.23
 
 require (
 	connectrpc.com/connect v1.18.1

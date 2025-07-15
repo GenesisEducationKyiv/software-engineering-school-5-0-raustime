@@ -1,24 +1,35 @@
 package application
 
 import (
+	"log"
 	"net/http"
 	"scheduler_microservice/internal/clients"
+	"scheduler_microservice/internal/config"
 	"scheduler_microservice/internal/scheduler"
 )
 
 type App struct {
 	scheduler *scheduler.Scheduler
+	config    *config.Config
 }
 
 func NewApp() *App {
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("failed to load config: %v", err)
+	}
+
 	httpClient := http.DefaultClient
 
-	subClient := clients.NewSubscriptionClient(httpClient, "http://subscription-service:8090")
-	mailerClient := clients.NewMailerClient(httpClient, "http://mailer-service:8091")
-	weatherClient := clients.NewWeatherHttpClient("http://weather-service:8080")
+	subClient := clients.NewSubscriptionClient(httpClient, cfg.SubscriptionURL)
+	mailerClient := clients.NewMailerClient(httpClient, cfg.MailerServiceURL)
+	weatherClient := clients.NewWeatherHttpClient(cfg.WeatherServiceURL)
 
 	s := scheduler.NewScheduler(subClient, mailerClient, weatherClient)
-	return &App{scheduler: s}
+	return &App{
+		scheduler: s,
+		config:    cfg,
+	}
 }
 
 func (a *App) Run() {
@@ -27,4 +38,8 @@ func (a *App) Run() {
 
 func (a *App) Shutdown() {
 	a.scheduler.Stop()
+}
+
+func (a *App) GetConfig() *config.Config {
+	return a.config
 }

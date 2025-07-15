@@ -7,8 +7,8 @@ import (
 )
 
 type Config struct {
-	AppBaseURL      string
-	Port            string
+	GrpcPort        string
+	HttpPort        string
 	MailerGRPCAddr  string
 	DatabaseURL     string
 	DatabaseTestURL string
@@ -20,9 +20,9 @@ type Config struct {
 func Load() *Config {
 
 	return &Config{
-		AppBaseURL:      getEnv("APP_BASE_URL", "http://localhost:8080"),
-		Port:            getEnv("PORT", "8080"),
-		MailerGRPCAddr:  getEnv("MAILER_GRPC_URL", "http://localhost:8087"),
+		GrpcPort:        getEnv("GRPC_PORT", "8090"),
+		HttpPort:        getEnv("HTTP_PORT", "8091"),
+		MailerGRPCAddr:  getEnv("MAILER_GRPC_URL", "http://localhost:8089"),
 		DatabaseURL:     getEnv("DB_URL", ""),
 		DatabaseTestURL: getEnv("TEST_DB_URL", ""),
 		Environment:     strings.ToLower(getEnv("ENVIRONMENT", "development")),

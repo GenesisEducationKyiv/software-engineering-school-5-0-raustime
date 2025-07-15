@@ -1,154 +1,64 @@
-package config
+package config_test
 
 import (
 	"os"
 	"testing"
+
+	"subscription_microservice/internal/config"
+
+	"github.com/stretchr/testify/require"
 )
 
-func TestConfig_Validate(t *testing.T) {
-	tests := []struct {
-		name    string
-		config  *Config
-		wantErr bool
-	}{
-		{
-			name: "valid config",
-			config: &Config{
-				Port:        "8080",
-				Environment: "development",
-				DatabaseURL: "postgres://user:pass@localhost/db",
-			},
-			wantErr: false,
-		},
-		{
-			name: "missing required DB_URL",
-			config: &Config{
-				Port:        "8080",
-				Environment: "development",
-			},
-			wantErr: true,
-		},
-	}
+func TestLoad_Defaults(t *testing.T) {
+	os.Clearenv()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.config.Validate()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
+	cfg := config.Load()
+	require.Equal(t, "8090", cfg.GrpcPort)
+	require.Equal(t, "8091", cfg.HttpPort)
+	require.Equal(t, "http://localhost:8089", cfg.MailerGRPCAddr)
+	require.Equal(t, "", cfg.DatabaseURL)
+	require.Equal(t, "", cfg.DatabaseTestURL)
+	require.Equal(t, "development", cfg.Environment)
+	require.False(t, cfg.IsBunDebugEnabled())
 }
 
-func TestConfig_IsBunDebugEnabled(t *testing.T) {
-	tests := []struct {
-		name     string
-		config   *Config
-		expected bool
-	}{
-		{
-			name: "debug enabled",
-			config: &Config{
-				BunDebugMode: "1",
-			},
-			expected: true,
-		},
-		{
-			name: "debug disabled",
-			config: &Config{
-				BunDebugMode: "0",
-			},
-			expected: false,
-		},
-		{
-			name: "case insensitive true",
-			config: &Config{
-				BunDebugMode: "TRUE",
-			},
-			expected: true,
-		},
-		{
-			name: "alternative yes",
-			config: &Config{
-				BunDebugMode: "yes",
-			},
-			expected: true,
-		},
-		{
-			name: "empty string",
-			config: &Config{
-				BunDebugMode: "",
-			},
-			expected: false,
-		},
-	}
+func TestLoad_WithEnv(t *testing.T) {
+	os.Setenv("GRPC_PORT", "9000")
+	os.Setenv("HTTP_PORT", "9001")
+	os.Setenv("MAILER_GRPC_URL", "https://mailer.example.com")
+	os.Setenv("DB_URL", "postgres://user:pass@localhost:5432/db")
+	os.Setenv("ENVIRONMENT", "production")
+	os.Setenv("BUNDEBUG", "true")
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := tt.config.IsBunDebugEnabled()
-			if result != tt.expected {
-				t.Errorf("IsBunDebugEnabled() = %v, expected %v", result, tt.expected)
-			}
-		})
-	}
-}
-func TestConfig_DefaultValues(t *testing.T) {
-	clearEnvVars()
-	cfg := Load()
-	if cfg == nil {
-		t.Fatalf("unexpected error")
-	}
-
-	if cfg.Port != "8080" {
-		t.Errorf("expected default port 8080, got %v", cfg.Port)
-	}
-
-	if cfg.BunDebugMode != "0" {
-		t.Errorf("expected default BunDebug 0, got %v", cfg.BunDebugMode)
-	}
+	cfg := config.Load()
+	require.Equal(t, "9000", cfg.GrpcPort)
+	require.Equal(t, "9001", cfg.HttpPort)
+	require.Equal(t, "https://mailer.example.com", cfg.MailerGRPCAddr)
+	require.Equal(t, "postgres://user:pass@localhost:5432/db", cfg.DatabaseURL)
+	require.Equal(t, "production", cfg.Environment)
+	require.True(t, cfg.IsBunDebugEnabled())
+	require.True(t, cfg.IsProduction())
+	require.False(t, cfg.IsDevelopment())
+	require.False(t, cfg.IsTest())
 }
 
-func TestConfig_EnvironmentVariableOverrides(t *testing.T) {
-	clearEnvVars()
-
-	envs := map[string]string{
-		"PORT":                "9090",
-		"DB_URL":              "postgres://test:test@localhost/testdb",
-		"ENVIRONMENT":         "production",
-		"OPENWEATHER_API_KEY": "abc",
-		"BUNDEBUG":            "1",
+func TestValidate_DBRequired(t *testing.T) {
+	cfg := &config.Config{
+		DatabaseURL: "",
 	}
-
-	for k, v := range envs {
-		_ = os.Setenv(k, v)
-	}
-
-	cfg := Load()
-	if cfg == nil {
-		t.Fatalf("Load() error")
-	}
-
-	if cfg.Port != "9090" {
-		t.Errorf("expected port 9090, got %v", cfg.Port)
-	}
-
-	if cfg.DatabaseURL != "postgres://test:test@localhost/testdb" {
-		t.Errorf("unexpected db url: %v", cfg.DatabaseURL)
-	}
-
-	if cfg.Environment != "production" {
-		t.Errorf("unexpected environment: %v", cfg.Environment)
-	}
-
-	if cfg.BunDebugMode != "1" {
-		t.Errorf("expected BunDebug 1, got %v", cfg.BunDebugMode)
-	}
+	err := cfg.Validate()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "DB_URL is required")
 }
 
-func clearEnvVars() {
-	_ = os.Unsetenv("PORT")
-	_ = os.Unsetenv("DB_URL")
-	_ = os.Unsetenv("ENVIRONMENT")
-	_ = os.Unsetenv("BUNDEBUG")
-	_ = os.Unsetenv("OPENWEATHER_API_KEY")
+func TestGetDatabaseURL_PrefersTestInTestMode(t *testing.T) {
+	cfg := &config.Config{
+		DatabaseURL:     "postgres://main",
+		DatabaseTestURL: "postgres://test",
+		Environment:     "test",
+	}
+	require.Equal(t, "postgres://test", cfg.GetDatabaseURL())
+
+	cfg.Environment = "production"
+	require.Equal(t, "postgres://main", cfg.GetDatabaseURL())
 }

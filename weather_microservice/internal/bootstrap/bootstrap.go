@@ -8,6 +8,7 @@ import (
 	"weather_microservice/internal/config"
 	"weather_microservice/internal/contracts"
 	"weather_microservice/internal/weather_service"
+	"weather_microservice/internal/logging"
 )
 
 func InitWeatherService() (weather_service.WeatherService, error) {
@@ -55,8 +56,12 @@ func InitWeatherService() (weather_service.WeatherService, error) {
 		return weather_service.WeatherService{}, fmt.Errorf("failed to create WeatherAPI adapter: %w", err)
 	}
 
+	// ⬇️ Setup logger
+	logger := logging.NewFileWeatherLogger("weather.log")
+		
 	// Setup chain
-	weatherChain := chain.NewWeatherChain(nil)
+	weatherChain := chain.NewWeatherChain(logger)
+
 	owHandler := chain.NewBaseWeatherHandler(&openWeather, "openweather")
 	waHandler := chain.NewBaseWeatherHandler(&weatherAPI, "weatherapi")
 	owHandler.SetNext(waHandler)
