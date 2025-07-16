@@ -2,8 +2,11 @@ name: Run All Tests
 
 on:
   push:
-    branches: [main]
+    branches:
+      - "**"
   pull_request:
+    branches:
+      - "**"
 
 env:
   COMPOSE_PROJECT_NAME: weatherapi
