@@ -6,7 +6,6 @@ import (
 	"weather_microservice/internal/cache"
 	"weather_microservice/internal/chain"
 	"weather_microservice/internal/config"
-	"weather_microservice/internal/contracts"
 	"weather_microservice/internal/weather_service"
 	"weather_microservice/internal/logging"
 )
@@ -21,9 +20,9 @@ func InitWeatherService(cfg *config.Config) (weather_service.WeatherService, err
 	metrics.Register()
 
 	// Setup cache
-	//var redisCache contracts.WeatherCache
+	var redisCache contracts.WeatherCache
 	if cfg.Cache.Enabled {
-		redisCache, err :=  cache.NewRedisCache(
+		redisCache =  cache.NewRedisCache(
 			cache.RedisConfig{
 				Addr:     cfg.Cache.Redis.Addr,
 				Password: cfg.Cache.Redis.Password,
@@ -41,7 +40,7 @@ func InitWeatherService(cfg *config.Config) (weather_service.WeatherService, err
     		return weather_service.WeatherService{}, fmt.Errorf("failed to init redis cache: %w", err)
 		}
 	} else {
-		redisCache := cache.NoopWeatherCache{}
+		redisCache = cache.NoopWeatherCache{}
 	}
 
 	// Setup adapters
