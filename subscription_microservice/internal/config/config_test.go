@@ -23,12 +23,12 @@ func TestLoad_Defaults(t *testing.T) {
 }
 
 func TestLoad_WithEnv(t *testing.T) {
-	os.Setenv("GRPC_PORT", "9000")
-	os.Setenv("HTTP_PORT", "9001")
-	os.Setenv("MAILER_GRPC_URL", "https://mailer.example.com")
-	os.Setenv("DB_URL", "postgres://user:pass@localhost:5432/db")
-	os.Setenv("ENVIRONMENT", "production")
-	os.Setenv("BUNDEBUG", "true")
+	mustSetEnv("GRPC_PORT", "9000")
+	mustSetEnv("HTTP_PORT", "9001")
+	mustSetEnv("MAILER_GRPC_URL", "https://mailer.example.com")
+	mustSetEnv("DB_URL", "postgres://user:pass@localhost:5432/db")
+	mustSetEnv("ENVIRONMENT", "production")
+	mustSetEnv("BUNDEBUG", "true")
 
 	cfg := config.Load()
 	require.Equal(t, "9000", cfg.GrpcPort)
@@ -40,6 +40,12 @@ func TestLoad_WithEnv(t *testing.T) {
 	require.True(t, cfg.IsProduction())
 	require.False(t, cfg.IsDevelopment())
 	require.False(t, cfg.IsTest())
+}
+
+func mustSetEnv(key, value string) {
+	if err := os.Setenv(key, value); err != nil {
+		log.Fatalf("failed to set %s: %v", key, err)
+	}
 }
 
 func TestValidate_DBRequired(t *testing.T) {
