@@ -64,6 +64,7 @@ services:
       mailer_service:
         condition: service_started
     environment:
+      - MAILER_GRPC_URL=http://mailer_service:8089
       - DB_URL=postgres://postgres:postgres@db:5432/subscription?sslmode=disable
     networks:
       - backend

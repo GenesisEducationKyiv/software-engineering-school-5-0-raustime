@@ -13,6 +13,7 @@ message EmailRequest {
   float temperature = 5;
   float humidity = 6;
   string token = 7;
+  bool is_confirmation = 8; 
 }
 
 // EmailStatusResponse є статус доставки для кожного EmailRequest

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"html/template"
 	"path/filepath"
 
@@ -54,10 +55,16 @@ func (s *MailerService) SendConfirmationEmail(ctx context.Context, email, token 
 
 	body, err := s.renderTemplate("confirmation_email.html", data)
 	if err != nil {
+		log.Printf("[MailerService] ❌ failed to render confirmation template: %v", err)
 		return fmt.Errorf("failed to render confirmation template: %w", err)
 	}
-
-	return s.emailSender.Send(email, "Confirm your subscription", body)
+	log.Printf("[MailerService] 📩 sending confirmation email to %s with link: %s", email, link)
+	if err := s.emailSender.Send(email, "Confirm your subscription", body); err != nil {
+		log.Printf("[MailerService] ❌ failed to send confirmation email to %s: %v", email, err)
+		return err
+	}
+	log.Printf("[MailerService] ✅ confirmation email sent to %s", email)
+	return nil
 }
 
 // SendWeatherEmail sends weather update email.
@@ -78,11 +85,20 @@ func (s *MailerService) SendWeatherEmail(ctx context.Context, email, city string
 
 	body, err := s.renderTemplate("weather_email.html", data)
 	if err != nil {
+		log.Printf("[MailerService] ❌ failed to render weather template: %v", err)
 		return fmt.Errorf("failed to render weather template: %w", err)
 	}
 
 	subject := fmt.Sprintf("Weather Update for %s", city)
-	return s.emailSender.Send(email, subject, body)
+	log.Printf("[MailerService] 📩 sending weather email to %s for city %s", email, city)
+
+	if err := s.emailSender.Send(email, subject, body); err != nil {
+		log.Printf("[MailerService] ❌ failed to send weather email to %s: %v", email, err)
+		return err
+	}
+
+	log.Printf("[MailerService] ✅ weather email sent to %s", email)
+	return nil
 }
 
 // renderTemplate renders HTML template with data.

@@ -1,11 +1,32 @@
-# weather-api
+# 🌦️ WeatherAPI Service
 
-weather api for Genesis Software Engineering School 5.0 // Case
+Цей сервіс надає погодні дані через HTTP API, використовуючи адаптери до зовнішніх сервісів — OpenWeather та WeatherAPI. Також підтримується логіка підписок, надсилання листів та кешування.
 
-api deployed at
-weather-api-production-4236.up.railway.app
+## 🔧 Технології
 
-web app with interface deployed at
-<https://weather-sub.onrender.com>
+- **Go 1.23**
+- **Docker + Docker Compose**
+- **Prometheus metrics** (`/metrics`)
+- Адаптери до:
+  - OpenWeather API
+  - WeatherAPI
+- Кеш: Noop або Redis (налаштовується)
+- Email-повідомлення (через абстрактний `MailerService`)
+- Підтримка `graceful shutdown`
 
-Deployment was done from deploy-from-this branch because some integration tests failed
+---
+
+## 🚀 Швидкий старт
+
+Використовуйте `make` для запуску:
+
+```bash
+make build     # Побудувати образи
+make up        # Запустити контейнери
+make down      # Зупинити і видалити контейнери
+make restart   # Перезапуск (down + up)
+make logs      # Переглянути логи
+make logs-weather_service  # Логи тільки weather-сервісу
+make logs-mailer_service # Логи тільки mailer-сервісу
+make logs-subscription_service # Логи тільки subscription-сервісу
+make logs-scheduler_service # Логи тільки scheduler-сервісу

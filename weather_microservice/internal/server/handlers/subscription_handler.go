@@ -46,7 +46,7 @@ func (h SubscriptionHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 
 	_, err := h.client.Client.Create(r.Context(), req)
 	if err != nil {
-		log.Printf("Calling RPC: %s (protocol: %s)", req.Spec().Procedure, req.Spec().Protocol)
+		log.Printf("↪ RPC Create -> %s", req.Spec().Procedure)
 		log.Printf("[SubscriptionHandler] failed to create subscription: %v", err)
 		http.Error(w, "Failed to create subscription", http.StatusBadGateway)
 		return

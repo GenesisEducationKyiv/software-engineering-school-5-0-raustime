@@ -23,16 +23,17 @@ const (
 
 // EmailRequest для стрімової відправки
 type EmailRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
-	To            string                 `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
-	City          string                 `protobuf:"bytes,3,opt,name=city,proto3" json:"city,omitempty"`
-	Description   string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
-	Temperature   float32                `protobuf:"fixed32,5,opt,name=temperature,proto3" json:"temperature,omitempty"`
-	Humidity      float32                `protobuf:"fixed32,6,opt,name=humidity,proto3" json:"humidity,omitempty"`
-	Token         string                 `protobuf:"bytes,7,opt,name=token,proto3" json:"token,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	RequestId      string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	To             string                 `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
+	City           string                 `protobuf:"bytes,3,opt,name=city,proto3" json:"city,omitempty"`
+	Description    string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	Temperature    float32                `protobuf:"fixed32,5,opt,name=temperature,proto3" json:"temperature,omitempty"`
+	Humidity       float32                `protobuf:"fixed32,6,opt,name=humidity,proto3" json:"humidity,omitempty"`
+	Token          string                 `protobuf:"bytes,7,opt,name=token,proto3" json:"token,omitempty"`
+	IsConfirmation bool                   `protobuf:"varint,8,opt,name=is_confirmation,json=isConfirmation,proto3" json:"is_confirmation,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *EmailRequest) Reset() {
@@ -114,6 +115,13 @@ func (x *EmailRequest) GetToken() string {
 	return ""
 }
 
+func (x *EmailRequest) GetIsConfirmation() bool {
+	if x != nil {
+		return x.IsConfirmation
+	}
+	return false
+}
+
 // EmailStatusResponse є статус доставки для кожного EmailRequest
 type EmailStatusResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -179,7 +187,7 @@ var File_mailer_v1_mailer_proto protoreflect.FileDescriptor
 
 const file_mailer_v1_mailer_proto_rawDesc = "" +
 	"\n" +
-	"\x16mailer/v1/mailer.proto\x12\tmailer.v1\"\xc7\x01\n" +
+	"\x16mailer/v1/mailer.proto\x12\tmailer.v1\"\xf0\x01\n" +
 	"\fEmailRequest\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12\x0e\n" +
@@ -188,7 +196,8 @@ const file_mailer_v1_mailer_proto_rawDesc = "" +
 	"\vdescription\x18\x04 \x01(\tR\vdescription\x12 \n" +
 	"\vtemperature\x18\x05 \x01(\x02R\vtemperature\x12\x1a\n" +
 	"\bhumidity\x18\x06 \x01(\x02R\bhumidity\x12\x14\n" +
-	"\x05token\x18\a \x01(\tR\x05token\"h\n" +
+	"\x05token\x18\a \x01(\tR\x05token\x12'\n" +
+	"\x0fis_confirmation\x18\b \x01(\bR\x0eisConfirmation\"h\n" +
 	"\x13EmailStatusResponse\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12\x1c\n" +

@@ -1,11 +1,13 @@
 package application
 
 import (
-	"context"
-	"fmt"
 	"log"
 	"net/http"
-	"time"
+	"fmt"
+	"context"
+
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 
 	"mailer_microservice/internal/config"
 	"mailer_microservice/internal/mailer_service"
@@ -13,47 +15,41 @@ import (
 )
 
 type App struct {
-	server *http.Server
+	httpServer *http.Server
 }
 
 func NewApp() *App {
 	cfg := config.Load()
 	if cfg == nil {
-		panic("failed to load configuration")
+		log.Fatal("❌ failed to load configuration")
 	}
 
-	emailSender := mailer_service.NewSMTPSender(
+	sender := mailer_service.NewSMTPSender(
 		cfg.SMTPUser,
 		cfg.SMTPPassword,
 		cfg.SMTPHost,
 		fmt.Sprint(cfg.SMTPPort),
 	)
 
-	mailer := mailer_service.NewMailerService(emailSender, cfg.AppBaseURL)
+	mailer := mailer_service.NewMailerService(sender, cfg.AppBaseURL)
 	mailer.SetTemplateDir(cfg.TemplateDir)
+
 	router := server.NewRouter(mailer)
+	h2cHandler := h2c.NewHandler(router, &http2.Server{})
 
 	httpServer := &http.Server{
-		Addr:         ":" + cfg.Port,
-		Handler:      router,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		Addr:    ":" + cfg.Port,
+		Handler: h2cHandler,
 	}
 
-	return &App{server: httpServer}
+	return &App{httpServer: httpServer}
 }
 
 func (a *App) Run() error {
-	log.Printf("🚀 Starting mailer service on %s", a.server.Addr)
-	go func() {
-		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			panic(fmt.Errorf("server error: %w", err))
-		}
-	}()
-	return nil
+	log.Printf("🚀 MailerService (ConnectRPC + h2c) listening on %s", a.httpServer.Addr)
+	return a.httpServer.ListenAndServe()
 }
 
-func (a *App) Close(ctx context.Context) error {
-	return a.server.Shutdown(ctx)
+func (a *App) Close(_ context.Context) error {
+	return a.httpServer.Close()
 }

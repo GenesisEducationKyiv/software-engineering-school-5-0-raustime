@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/mail"
 	"time"
+	"log"
 
 	"github.com/google/uuid"
 
@@ -55,8 +56,11 @@ func (s SubscriptionService) Create(ctx context.Context, email, city, frequency 
 	if !validFreq[frequency] {
 		return apierrors.ErrInvalidFrequency
 	}
-	existing, _ := s.subRepo.GetByEmail(ctx, email)
-	// here we can log err if not just not_found
+	existing,err := s.subRepo.GetByEmail(ctx, email)
+	if err != nil && err != apierrors.ErrSubscriptionNotFound {
+		// лог будь-яких несподіваних помилок
+		log.Printf("[SubscriptionService] error checking existing email: %v", err)
+	}
 	if existing != (models.Subscription{}) {
 		return apierrors.ErrAlreadySubscribed
 	}
@@ -74,6 +78,7 @@ func (s SubscriptionService) Create(ctx context.Context, email, city, frequency 
 	}
 
 	if err := s.mailerService.SendConfirmationEmail(ctx, email, subscription.Token); err != nil {
+		log.Printf("[SubscriptionService] failed to send confirmation email to %s: %v", email, err)
 		return apierrors.ErrFailedSendConfirmEmail
 	}
 
