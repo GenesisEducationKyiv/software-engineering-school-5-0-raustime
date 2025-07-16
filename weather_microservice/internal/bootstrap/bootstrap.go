@@ -21,9 +21,9 @@ func InitWeatherService(cfg *config.Config) (weather_service.WeatherService, err
 	metrics.Register()
 
 	// Setup cache
-	var redisCache contracts.WeatherCache
+	//var redisCache contracts.WeatherCache
 	if cfg.Cache.Enabled {
-		redisCache = cache.NewRedisCache(
+		redisCache, err :=  cache.NewRedisCache(
 			cache.RedisConfig{
 				Addr:     cfg.Cache.Redis.Addr,
 				Password: cfg.Cache.Redis.Password,
@@ -37,11 +37,11 @@ func InitWeatherService(cfg *config.Config) (weather_service.WeatherService, err
 			},
 			metrics,
 		)
-		if redisCache == nil {
-			return weather_service.WeatherService{}, fmt.Errorf("failed to initialize Redis cache")
+		if err != nil {
+    		return weather_service.WeatherService{}, fmt.Errorf("failed to init redis cache: %w", err)
 		}
 	} else {
-		redisCache = cache.NoopWeatherCache{}
+		redisCache := cache.NoopWeatherCache{}
 	}
 
 	// Setup adapters
