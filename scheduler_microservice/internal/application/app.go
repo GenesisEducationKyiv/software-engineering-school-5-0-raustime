@@ -22,7 +22,7 @@ func NewApp() *App {
 	httpClient := http.DefaultClient
 
 	subClient := clients.NewSubscriptionClient(httpClient, cfg.SubscriptionURL)
-	mailerClient := clients.NewMailerClient(httpClient, cfg.MailerServiceURL)
+	mailerClient := clients.NewMailerClient(cfg.MailerServiceURL)
 	weatherClient := clients.NewWeatherHttpClient(cfg.WeatherServiceURL)
 
 	s := scheduler.NewScheduler(subClient, mailerClient, weatherClient)
