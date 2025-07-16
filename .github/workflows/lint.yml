@@ -6,8 +6,15 @@ on:
 
 jobs:
   lint:
-    name: Run golangci-lint
+    name: Run golangci-lint on all microservices
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module:
+          - mailer_microservice
+          - scheduler_microservice
+          - subscription_microservice
+          - weather_microservice
 
     steps:
       - name: Checkout code
@@ -18,8 +25,9 @@ jobs:
         with:
           go-version: 1.23
 
-      - name: Run golangci-lint
+      - name: Run golangci-lint in ${{ matrix.module }}
         uses: golangci/golangci-lint-action@v8
         with:
           version: latest
+          working-directory: ${{ matrix.module }}
           args: --timeout=5m
