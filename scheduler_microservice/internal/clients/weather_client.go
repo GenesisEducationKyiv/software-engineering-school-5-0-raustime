@@ -31,7 +31,11 @@ func (c *weatherHttpClient) GetWeather(ctx context.Context, city string) (*contr
 	if err != nil {
 		return nil, fmt.Errorf("weather service request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+    if err := resp.Body.Close(); err != nil {
+        log.Printf("failed to close response body: %v", err)
+    }
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("weather service returned status %d", resp.StatusCode)

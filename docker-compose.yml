@@ -103,6 +103,14 @@ services:
       retries: 10
       start_period: 5s
 
+  test-runner-unit:
+    image: golang:1.23
+    volumes:
+      - .:/app
+    working_dir: /app
+    entrypoint: ""
+    command: ["sh", "-c", "cd $${TEST_MODULE} && go test ./... -v"]
+
 networks:
   backend:
 

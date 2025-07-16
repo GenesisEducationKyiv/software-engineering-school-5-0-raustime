@@ -27,11 +27,8 @@ jobs:
       - name: Create .env file
         run: cp .env.ci .env
 
-      - name: Start Postgres
-        run: docker compose up -d db
-
-      - name: Run Unit Tests
-        run: docker compose run --rm test-runner-unit
+      - name: Run Unit Tests (all microservices)
+        run: make docker-test-unit
 
       - name: Clean up
         run: docker compose down -v
