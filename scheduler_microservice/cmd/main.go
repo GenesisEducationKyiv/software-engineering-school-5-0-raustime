@@ -15,6 +15,7 @@ func main() {
 	health.StartHealthServer(app.GetConfig().Port)
 	
 	app.Run()
+	log.Printf("✅ Scheduler service started on port %s", app.GetConfig().Port)
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)

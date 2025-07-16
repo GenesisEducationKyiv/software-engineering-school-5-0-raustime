@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"weather_microservice/internal/client"
+	"weather_microservice/internal/config"
 	"weather_microservice/internal/server/handlers"
 	"weather_microservice/internal/server/middleware"
 	"weather_microservice/internal/weather_service"
@@ -16,8 +17,8 @@ type Router struct {
 	subscriptionHandler handlers.SubscriptionHandler
 }
 
-func NewRouter(weatherService weather_service.WeatherService) http.Handler {
-	subscriptionClient := client.NewSubscriptionClient("http://subscription_microservice:8081")
+func NewRouter(cfg *config.Config, weatherService weather_service.WeatherService) http.Handler {
+	subscriptionClient := client.NewSubscriptionClient(cfg.SubscriptionServiceURL)
 
 	router := &Router{
 		mux:                 http.NewServeMux(),

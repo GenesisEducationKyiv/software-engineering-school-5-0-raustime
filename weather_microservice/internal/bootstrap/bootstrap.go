@@ -11,8 +11,7 @@ import (
 	"weather_microservice/internal/logging"
 )
 
-func InitWeatherService() (weather_service.WeatherService, error) {
-	cfg := config.Load()
+func InitWeatherService(cfg *config.Config) (weather_service.WeatherService, error) {
 	if cfg == nil {
 		return weather_service.WeatherService{}, fmt.Errorf("failed to load config")
 	}
@@ -56,7 +55,7 @@ func InitWeatherService() (weather_service.WeatherService, error) {
 		return weather_service.WeatherService{}, fmt.Errorf("failed to create WeatherAPI adapter: %w", err)
 	}
 
-	// ⬇️ Setup logger
+	// Setup logger
 	logger := logging.NewFileWeatherLogger("weather.log")
 		
 	// Setup chain

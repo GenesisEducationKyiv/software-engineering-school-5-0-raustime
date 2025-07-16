@@ -9,10 +9,11 @@ import (
 )
 
 type Config struct {
-	AppBaseURL     string
-	Port           string
-	OpenWeatherKey string
-	WeatherKey     string
+	AppBaseURL             string
+	Port                   string
+	OpenWeatherKey         string
+	WeatherKey     		   string
+	SubscriptionServiceURL string
 	Environment    string
 	Cache          CacheConfig
 }
@@ -65,6 +66,7 @@ func Load() *Config {
 		Port:           getEnv("PORT", "8080"),
 		OpenWeatherKey: getEnv("OPENWEATHER_API_KEY", ""),
 		WeatherKey:     getEnv("WEATHER_API_KEY", ""),
+		SubscriptionServiceURL : getEnv("SUBSCRIPTION_SERVICE_URL", "http://localhost:8091"),
 		Environment:    strings.ToLower(getEnv("ENVIRONMENT", "development")),
 		Cache:          cacheConfig,
 	}

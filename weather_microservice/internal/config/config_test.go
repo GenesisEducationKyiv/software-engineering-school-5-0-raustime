@@ -1,106 +1,88 @@
 package config
 
 import (
-	"os"
 	"testing"
+	"time"
 )
 
 func TestConfig_Validate(t *testing.T) {
-	tests := []struct {
-		name    string
-		config  *Config
-		wantErr bool
-	}{
-		{
-			name: "valid config",
-			config: &Config{
-				Port:           "8080",
-				Environment:    "development",
-				OpenWeatherKey: "abc123",
-			},
-			wantErr: false,
-		},
-		{
-			name: "missing openweather key",
-			config: &Config{
-				Port:        "8080",
-				Environment: "development",
-			},
-			wantErr: true,
-		},
-	}
+	t.Run("valid config", func(t *testing.T) {
+		cfg := &Config{OpenWeatherKey: "abc123"}
+		if err := cfg.Validate(); err != nil {
+			t.Errorf("expected no error, got: %v", err)
+		}
+	})
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.config.Validate()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
+	t.Run("missing OpenWeatherKey", func(t *testing.T) {
+		cfg := &Config{}
+		if err := cfg.Validate(); err == nil {
+			t.Errorf("expected error, got nil")
+		}
+	})
 }
 
-func TestConfig_DefaultValues(t *testing.T) {
-	clearEnvVars()
+func TestLoad_DefaultValues(t *testing.T) {
+	t.Setenv("PORT", "")
+	t.Setenv("ENVIRONMENT", "")
+	t.Setenv("OPENWEATHER_API_KEY", "abc123") // to pass validation
+	t.Setenv("CACHE_ENABLED", "")
+	t.Setenv("CACHE_EXPIRATION_MINUTES", "")
+
 	cfg := Load()
-	if cfg == nil {
-		t.Fatal("Load() returned nil config")
-	}
 
 	if cfg.Port != "8080" {
 		t.Errorf("expected default port 8080, got %v", cfg.Port)
 	}
-
 	if cfg.Environment != "development" {
 		t.Errorf("expected default environment development, got %v", cfg.Environment)
 	}
-
-	if cfg.Cache.Expiration != 10*60*1e9 {
-		t.Errorf("expected default expiration 10 minutes, got %v", cfg.Cache.Expiration)
+	if cfg.Cache.Expiration != 10*time.Minute {
+		t.Errorf("expected expiration 10m, got %v", cfg.Cache.Expiration)
+	}
+	if cfg.Cache.Enabled {
+		t.Errorf("expected cache to be disabled by default")
 	}
 }
 
-func TestConfig_EnvironmentVariableOverrides(t *testing.T) {
-	clearEnvVars()
-
-	envs := map[string]string{
-		"PORT":                     "9090",
-		"ENVIRONMENT":              "production",
-		"OPENWEATHER_API_KEY":      "abc",
-		"CACHE_ENABLED":            "true",
-		"CACHE_EXPIRATION_MINUTES": "15",
-	}
-
-	for k, v := range envs {
-		_ = os.Setenv(k, v)
-	}
+func TestLoad_WithOverrides(t *testing.T) {
+	t.Setenv("PORT", "9090")
+	t.Setenv("ENVIRONMENT", "production")
+	t.Setenv("OPENWEATHER_API_KEY", "abc123")
+	t.Setenv("CACHE_ENABLED", "true")
+	t.Setenv("CACHE_EXPIRATION_MINUTES", "15")
+	t.Setenv("REDIS_DB", "2")
+	t.Setenv("REDIS_POOL_SIZE", "20")
+	t.Setenv("REDIS_TIMEOUT_SECONDS", "3")
+	t.Setenv("REDIS_ADDR", "redis:6379")
+	t.Setenv("REDIS_PASSWORD", "secret")
 
 	cfg := Load()
-	if cfg == nil {
-		t.Fatalf("Load() error: cfg is nil")
-	}
 
 	if cfg.Port != "9090" {
 		t.Errorf("expected port 9090, got %v", cfg.Port)
 	}
-
 	if cfg.Environment != "production" {
-		t.Errorf("unexpected environment: %v", cfg.Environment)
+		t.Errorf("expected production env, got %v", cfg.Environment)
 	}
-
 	if !cfg.Cache.Enabled {
 		t.Errorf("expected cache to be enabled")
 	}
-
-	if cfg.Cache.Expiration.Minutes() != 15 {
-		t.Errorf("expected cache expiration 15 minutes, got %v", cfg.Cache.Expiration)
+	if cfg.Cache.Expiration != 15*time.Minute {
+		t.Errorf("expected expiration 15m, got %v", cfg.Cache.Expiration)
 	}
-}
-
-func clearEnvVars() {
-	_ = os.Unsetenv("PORT")
-	_ = os.Unsetenv("ENVIRONMENT")
-	_ = os.Unsetenv("OPENWEATHER_API_KEY")
-	_ = os.Unsetenv("CACHE_ENABLED")
-	_ = os.Unsetenv("CACHE_EXPIRATION_MINUTES")
+	if cfg.Cache.Redis.DB != 2 {
+		t.Errorf("expected Redis DB 2, got %v", cfg.Cache.Redis.DB)
+	}
+	if cfg.Cache.Redis.PoolSize != 20 {
+		t.Errorf("expected Redis pool 20, got %v", cfg.Cache.Redis.PoolSize)
+	}
+	if cfg.Cache.Redis.Timeout != 3*time.Second {
+		t.Errorf("expected Redis timeout 3s, got %v", cfg.Cache.Redis.Timeout)
+	}
+	if cfg.Cache.Redis.Addr != "redis:6379" {
+		t.Errorf("expected Redis addr redis:6379, got %v", cfg.Cache.Redis.Addr)
+	}
+	if cfg.Cache.Redis.Password != "secret" {
+		t.Errorf("expected Redis password secret, got %v", cfg.Cache.Redis.Password)
+	}
 }

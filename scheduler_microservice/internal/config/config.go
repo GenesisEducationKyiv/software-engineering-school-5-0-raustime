@@ -14,9 +14,9 @@ type Config struct {
 func Load() (*Config, error) {
 	cfg := &Config{
 		Port:               getEnv("SCHEDULER_PORT", "8092"),
-		MailerServiceURL:   getEnv("MAILER_SERVICE_URL", "http://mailer-service:8091"),
-		SubscriptionURL:    getEnv("SUBSCRIPTION_SERVICE_URL", "http://subscription-service:8090"),
-		WeatherServiceURL:  getEnv("WEATHER_SERVICE_URL", "http://weather-service:8080"),
+		MailerServiceURL:   getEnv("MAILER_SERVICE_URL", "http://mailer_service:8089"),
+		SubscriptionURL:    getEnv("SUBSCRIPTION_SERVICE_URL", "http://subscription_service:8091"),
+		WeatherServiceURL:  getEnv("WEATHER_SERVICE_URL", "http://weather_service:8080"),
 	}
 	return cfg, nil
 }

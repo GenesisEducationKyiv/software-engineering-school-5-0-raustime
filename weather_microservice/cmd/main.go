@@ -12,15 +12,17 @@ import (
 
 	"weather_microservice/internal/bootstrap"
 	"weather_microservice/internal/server"
+	"weather_microservice/internal/config"
 )
 
 func main() {
-	weatherService, err := bootstrap.InitWeatherService()
+	cfg := config.Load()
+	weatherService, err := bootstrap.InitWeatherService(cfg)
 	if err != nil {
 		log.Fatalf("Failed to initialize weather service: %v", err)
 	}
 
-	router := server.NewRouter(weatherService)
+	router := server.NewRouter(cfg,weatherService)
 
 	srv := &http.Server{
 		Addr:         ":8080",

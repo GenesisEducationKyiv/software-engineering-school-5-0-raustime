@@ -14,7 +14,7 @@ func NewSubscriptionClient(baseURL string) *SubscriptionClient {
 	return &SubscriptionClient{
 		Client: subpb.NewSubscriptionServiceClient(
 			&http.Client{},
-			baseURL,
+			baseURL, 
 		),
 	}
 }

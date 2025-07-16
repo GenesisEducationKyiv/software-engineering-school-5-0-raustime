@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"log"
 
 	subpb "weather_microservice/gen/go/subscription/v1"
 	"weather_microservice/internal/client"
@@ -45,6 +46,8 @@ func (h SubscriptionHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 
 	_, err := h.client.Client.Create(r.Context(), req)
 	if err != nil {
+		log.Printf("Calling RPC: %s (protocol: %s)", req.Spec().Procedure, req.Spec().Protocol)
+		log.Printf("[SubscriptionHandler] failed to create subscription: %v", err)
 		http.Error(w, "Failed to create subscription", http.StatusBadGateway)
 		return
 	}

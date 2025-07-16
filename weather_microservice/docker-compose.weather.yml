@@ -18,6 +18,7 @@ services:
       - REDIS_POOL_SIZE=10
       - REDIS_TIMEOUT_SECONDS=2
       - CACHE_EXPIRATION_MINUTES=10
+      - SUBSCRIPTION_SERVICE_URL=http://subscription_service:8091
     depends_on:
       weather-redis:
         condition: service_healthy
