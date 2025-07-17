@@ -30,3 +30,16 @@ make logs-weather_service  # Логи тільки weather-сервісу
 make logs-mailer_service # Логи тільки mailer-сервісу
 make logs-subscription_service # Логи тільки subscription-сервісу
 make logs-scheduler_service # Логи тільки scheduler-сервісу
+```
+
+## 🔧 Генереація коду з proto
+
+- install the Buf CLI
+  Windows:
+    scoop install buf
+  macOS or Linux:
+    brew install bufbuild/buf/buf
+  NPM:
+    npm install @bufbuild/buf
+
+- buf generate для генерації

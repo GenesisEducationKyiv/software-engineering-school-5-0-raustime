@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"log"
+	"sync"
 	"time"
 
 	"scheduler_microservice/internal/contracts"
@@ -65,24 +66,46 @@ func (s *Scheduler) run() {
 }
 
 func (s *Scheduler) Send(freq string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
 	subs, err := s.subSvc.GetConfirmed(ctx, freq)
 	if err != nil {
 		log.Printf("Error getting subscriptions: %v", err)
 		return
 	}
+
+	const maxWorkers = 10
+	sem := make(chan struct{}, maxWorkers)
+	var wg sync.WaitGroup
+
 	for _, sub := range subs {
-		weather, err := s.weatherSvc.GetWeather(ctx, sub.City)
-		if err != nil {
-			log.Printf("Weather error for %s: %v", sub.City, err)
-			continue
-		}
-		err = s.mailerSvc.SendWeatherEmail(ctx, sub.Email, sub.City, weather, sub.Token)
-		if err != nil {
-			log.Printf("Send error to %s: %v", sub.Email, err)
-		} else {
-			log.Printf("Sent %s update to %s", freq, sub.Email)
-		}
+		sem <- struct{}{}
+		wg.Add(1)
+
+		go func(sub *contracts.Subscription) {
+			defer func() {
+				<-sem
+				wg.Done()
+			}()
+			s.processSubscription(ctx, sub, freq)
+		}(sub)
+	}
+
+	wg.Wait()
+}
+
+func (s *Scheduler) processSubscription(ctx context.Context, sub *contracts.Subscription, freq string) {
+	weather, err := s.weatherSvc.GetWeather(ctx, sub.City)
+	if err != nil {
+		log.Printf("Weather error for %s: %v", sub.City, err)
+		return
+	}
+
+	err = s.mailerSvc.SendWeatherEmail(ctx, sub.Email, sub.City, weather, sub.Token)
+	if err != nil {
+		log.Printf("Send error to %s: %v", sub.Email, err)
+	} else {
+		log.Printf("Sent %s update to %s", freq, sub.Email)
 	}
 }

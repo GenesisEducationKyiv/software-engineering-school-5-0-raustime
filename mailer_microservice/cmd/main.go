@@ -24,12 +24,18 @@ func main() {
 		}
 	}()
 
-	if err := app.Run(); err != nil {
+	// Запускаємо app.Run у окремій горутині
+	errCh := make(chan error, 1)
+	go func() {
+		if err := app.Run(); err != nil {
+			errCh <- err
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		log.Println("📦 Received shutdown signal...")
+	case err := <-errCh:
 		log.Fatalf("❌ server run failed: %v", err)
 	}
-
-	// ⏸️ Блокуємо main, поки не прийде сигнал
-	<-ctx.Done()
-
-	log.Println("📦 Server is shutting down...")
 }
