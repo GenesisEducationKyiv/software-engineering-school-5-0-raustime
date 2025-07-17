@@ -20,6 +20,9 @@ func (m *mockSubSvc) GetConfirmed(ctx context.Context, frequency string) ([]*con
 type mockWeatherSvc struct{ mock.Mock }
 func (m *mockWeatherSvc) GetWeather(ctx context.Context, city string) (*contracts.WeatherData, error) {
 	args := m.Called(ctx, city)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).(*contracts.WeatherData), args.Error(1)
 }
 

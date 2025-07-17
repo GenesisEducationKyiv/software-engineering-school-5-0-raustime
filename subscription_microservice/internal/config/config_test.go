@@ -3,10 +3,11 @@ package config_test
 import (
 	"os"
 	"testing"
-
-	"subscription_microservice/internal/config"
+	"log"
 
 	"github.com/stretchr/testify/require"
+
+	"subscription_microservice/internal/config"
 )
 
 func TestLoad_Defaults(t *testing.T) {
