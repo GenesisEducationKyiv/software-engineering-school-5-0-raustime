@@ -11,11 +11,12 @@ import (
 type Config struct {
 	AppBaseURL             string
 	Port                   string
+	GRPCPort               string
 	OpenWeatherKey         string
-	WeatherKey     		   string
+	WeatherKey             string
 	SubscriptionServiceURL string
-	Environment    string
-	Cache          CacheConfig
+	Environment            string
+	Cache                  CacheConfig
 }
 
 type CacheConfig struct {
@@ -62,13 +63,14 @@ func Load() *Config {
 	}
 
 	return &Config{
-		AppBaseURL:     getEnv("APP_BASE_URL", "http://localhost:8080"),
-		Port:           getEnv("PORT", "8080"),
-		OpenWeatherKey: getEnv("OPENWEATHER_API_KEY", ""),
-		WeatherKey:     getEnv("WEATHER_API_KEY", ""),
-		SubscriptionServiceURL : getEnv("SUBSCRIPTION_SERVICE_URL", "http://localhost:8091"),
-		Environment:    strings.ToLower(getEnv("ENVIRONMENT", "development")),
-		Cache:          cacheConfig,
+		AppBaseURL:             getEnv("APP_BASE_URL", "http://localhost:8080"),
+		Port:                   getEnv("PORT", "8080"),
+		GRPCPort:               getEnv("GRPC_PORT", "8081"),
+		OpenWeatherKey:         getEnv("OPENWEATHER_API_KEY", ""),
+		WeatherKey:             getEnv("WEATHER_API_KEY", ""),
+		SubscriptionServiceURL: getEnv("SUBSCRIPTION_SERVICE_URL", "http://localhost:8091"),
+		Environment:            strings.ToLower(getEnv("ENVIRONMENT", "development")),
+		Cache:                  cacheConfig,
 	}
 
 }

@@ -7,8 +7,10 @@ services:
     container_name: weather_service
     ports:
       - "8080:8080"
+      - "8081:8081"
     environment:
       - PORT=8080
+      - GRPC_PORT=8081
       - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
       - WEATHER_API_KEY=${WEATHER_API_KEY}
       - ENVIRONMENT=dev

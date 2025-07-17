@@ -6,7 +6,10 @@ require (
 	github.com/prometheus/client_golang v1.22.0
 	github.com/redis/go-redis/v9 v9.11.0
 	github.com/stretchr/testify v1.10.0
+	golang.org/x/net v0.33.0
 )
+
+require golang.org/x/text v0.21.0 // indirect
 
 require (
 	connectrpc.com/connect v1.18.1

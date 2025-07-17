@@ -23,6 +23,7 @@ func TestConfig_Validate(t *testing.T) {
 
 func TestLoad_DefaultValues(t *testing.T) {
 	t.Setenv("PORT", "")
+	t.Setenv("GRPC_PORT", "")
 	t.Setenv("ENVIRONMENT", "")
 	t.Setenv("OPENWEATHER_API_KEY", "abc123") // to pass validation
 	t.Setenv("CACHE_ENABLED", "")
@@ -46,6 +47,7 @@ func TestLoad_DefaultValues(t *testing.T) {
 
 func TestLoad_WithOverrides(t *testing.T) {
 	t.Setenv("PORT", "9090")
+	t.Setenv("GRPC_PORT", "9091")
 	t.Setenv("ENVIRONMENT", "production")
 	t.Setenv("OPENWEATHER_API_KEY", "abc123")
 	t.Setenv("CACHE_ENABLED", "true")
@@ -60,6 +62,9 @@ func TestLoad_WithOverrides(t *testing.T) {
 
 	if cfg.Port != "9090" {
 		t.Errorf("expected port 9090, got %v", cfg.Port)
+	}
+	if cfg.GRPCPort != "9091" {
+		t.Errorf("expected port 9091, got %v", cfg.Port)
 	}
 	if cfg.Environment != "production" {
 		t.Errorf("expected production env, got %v", cfg.Environment)

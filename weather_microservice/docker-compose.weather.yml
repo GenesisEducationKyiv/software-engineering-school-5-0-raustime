@@ -8,6 +8,7 @@ services:
       - "8080:8080"
     environment:
       - PORT=8080
+      - GRPC_PORT=8081
       - OPENWEATHER_API_KEY=647bab43e62f0270d7c22658bd452cc0
       - WEATHER_API_KEY=ee532c4f8506474c8cc163802252106
       - ENVIRONMENT=dev

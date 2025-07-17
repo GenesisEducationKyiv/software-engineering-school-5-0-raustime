@@ -91,5 +91,5 @@ func (c *WeatherChain) GetWeather(ctx context.Context, city string) (contracts.W
 	ctx = context.WithValue(ctx, weatherLoggerKey, c.logger)
 
 	return c.firstHandler.Handle(ctx, city)
-
 }
+
