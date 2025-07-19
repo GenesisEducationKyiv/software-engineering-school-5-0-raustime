@@ -114,14 +114,16 @@ services:
     command: ["sh", "-c", "cd $${TEST_MODULE} && go test ./... -v"]
   
   test-runner-integration:
-    build:
-      context: .
-      dockerfile: ./tests/integration/Dockerfile
-    depends_on:
-      weather_service:
-        condition: service_started
-    networks:
-      - backend
+  image: golang:1.23
+  volumes:
+    - .:/app
+  working_dir: /app
+  command: ["go", "test", "./tests/integration/...", "-v"]
+  depends_on:
+    weather_service:
+      condition: service_started
+  networks:
+    - backend
 
 networks:
   backend:
