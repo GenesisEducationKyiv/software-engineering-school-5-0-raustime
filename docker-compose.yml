@@ -112,6 +112,16 @@ services:
     working_dir: /app
     entrypoint: ""
     command: ["sh", "-c", "cd $${TEST_MODULE} && go test ./... -v"]
+  
+  test-runner-integration:
+    build:
+      context: .
+      dockerfile: ./tests/integration/Dockerfile
+    depends_on:
+      weather_service:
+        condition: service_started
+    networks:
+      - backend
 
 networks:
   backend:

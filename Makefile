@@ -23,6 +23,9 @@ docker-test-unit:
 	docker compose run --rm -e TEST_MODULE=subscription_microservice test-runner-unit
 	docker compose run --rm -e TEST_MODULE=weather_microservice test-runner-unit
 
+docker-integration-test:
+	docker compose run --rm test-runner-integration
+
 install-tools:
 	@echo "🔧 Installing wrk, hey, and ghz if missing..."
 

@@ -71,5 +71,8 @@ jobs:
       - name: Run Integration Tests
         run: docker compose run --rm test-runner-integration
 
+      - name: Debug docker-compose services
+        run: docker compose config --services
+
       - name: Clean up
         run: docker compose down -v
