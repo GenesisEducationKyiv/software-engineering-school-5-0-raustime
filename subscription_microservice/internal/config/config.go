@@ -31,16 +31,6 @@ func Load() *Config {
 
 }
 
-func LoadTestConfig() *Config {
-	cfg := Load()
-	if cfg != nil {
-		cfg.Environment = "test"
-		cfg.DatabaseURL = cfg.DatabaseTestURL
-	}
-
-	return cfg
-}
-
 // IsProduction перевіряє чи додаток працює в продакшен режимі.
 func (c *Config) IsProduction() bool {
 	return c.Environment == "production"

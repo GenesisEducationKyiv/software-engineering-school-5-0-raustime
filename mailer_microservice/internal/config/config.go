@@ -14,7 +14,7 @@ type Config struct {
 	SMTPPort     int
 	SMTPUser     string
 	SMTPPassword string
-	TemplateDir  string 
+	TemplateDir  string
 	Environment  string
 }
 
@@ -34,15 +34,9 @@ func Load() *Config {
 		SMTPPort:     smtpPort,
 		SMTPUser:     getEnv("SMTP_USER", ""),
 		SMTPPassword: getEnv("SMTP_PASSWORD", ""),
-		TemplateDir: getEnv("TEMPLATE_DIR", "internal/templates"),
+		TemplateDir:  getEnv("TEMPLATE_DIR", "internal/templates"),
 		Environment:  strings.ToLower(getEnv("ENVIRONMENT", "development")),
 	}
-}
-
-func LoadTestConfig() *Config {
-	cfg := Load()
-	cfg.Environment = "test"
-	return cfg
 }
 
 // IsProduction перевіряє чи додаток працює в продакшен режимі.
