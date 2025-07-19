@@ -20,7 +20,6 @@ RUN apt-get update && \
 WORKDIR /app
 
 COPY --from=builder /app/weather_microservice .
-COPY .env ./
 
 EXPOSE 8080
 
