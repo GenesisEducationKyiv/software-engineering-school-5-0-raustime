@@ -40,35 +40,42 @@ func NewApp() *App {
 	mailer := mailer_service.NewMailerService(sender, cfg.AppBaseURL)
 	mailer.SetTemplateDir(cfg.TemplateDir)
 
-	// Connect to NATS
-	nc, err := nats.Connect(cfg.NATSUrl)
-	if err != nil {
-		log.Fatalf("❌ failed to connect to NATS: %v", err)
-	}
+// Connect to NATS
+nc, err := nats.Connect(cfg.NATSUrl)
+if err != nil {
+	log.Fatalf("❌ failed to connect to NATS: %v", err)
+}
 
-	jsClient, err := broker.NewJetStreamClient(nc)
-	if err != nil {
-		log.Fatalf("❌ failed to get JetStream context: %v", err)
-	}
+jsClient, err := broker.NewJetStreamClient(nc)
+if err != nil {
+	log.Fatalf("❌ failed to get JetStream context: %v", err)
+}
 
-	notifConsumer := notification.NewNotificationConsumer(mailer)
+// Ensure the stream exists (create it if not present)
+err = jsClient.EnsureStream("mailer", []string{"mailer.*"})
+if err != nil {
+	log.Fatalf("❌ failed to ensure stream: %v", err)
+}
+log.Println("📦 JetStream stream 'mailer' is ready")
 
-	// JetStream subscription with manual ack and retry
-	err = jsClient.Subscribe("mailer.notifications", "mailer-consumer", func(msg *nats.Msg) {
-		go func(m *nats.Msg) {
-			if err := notifConsumer.HandleMessage(context.Background(), m.Data); err != nil {
-				_ = m.Nak()
-				return
-			}
-			_ = m.Ack()
-		}(msg)
-	})
+notifConsumer := notification.NewNotificationConsumer(mailer)
 
-	if err != nil {
-		log.Fatalf("❌ failed to subscribe to JetStream: %v", err)
-	}
+// JetStream subscription with manual ack and retry
+err = jsClient.Subscribe("mailer.notifications", "mailer-consumer", func(msg *nats.Msg) {
+	go func(m *nats.Msg) {
+		if err := notifConsumer.HandleMessage(context.Background(), m.Data); err != nil {
+			_ = m.Nak()
+			return
+		}
+		_ = m.Ack()
+	}(msg)
+})
 
-	log.Println("📬 Subscribed to JetStream topic 'mailer.notifications'")
+if err != nil {
+	log.Fatalf("❌ failed to subscribe to JetStream: %v", err)
+}
+
+log.Println("📬 Subscribed to JetStream topic 'mailer.notifications'")
 
 	// HTTP + h2c server
 	router := server.NewRouter(mailer)

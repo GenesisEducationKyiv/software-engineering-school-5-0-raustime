@@ -8,6 +8,10 @@ type JetStreamClient struct {
 	js nats.JetStreamContext
 }
 
+func (c *JetStreamClient) GetJetStream() nats.JetStreamContext {
+	return c.js
+}
+
 func NewJetStreamClient(conn *nats.Conn) (*JetStreamClient, error) {
 	js, err := conn.JetStream()
 	if err != nil {
@@ -31,4 +35,16 @@ func (c *JetStreamClient) Subscribe(subject, durable string, handler func(msg *n
 		nats.MaxDeliver(5),
 	)
 	return err
+}
+
+func (c *JetStreamClient) EnsureStream(streamName string, subjects []string) error {
+	_, err := c.js.AddStream(&nats.StreamConfig{
+		Name:     streamName,
+		Subjects: subjects,
+		Storage:  nats.FileStorage,
+	})
+	if err != nil && err != nats.ErrStreamNameAlreadyInUse {
+		return err
+	}
+	return nil
 }
