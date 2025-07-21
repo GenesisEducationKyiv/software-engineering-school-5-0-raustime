@@ -1,4 +1,3 @@
-
 services:
   weather_service:
     build:
@@ -95,7 +94,7 @@ services:
     command: >
       /bin/sh -c "
         echo '⏳ Waiting for NATS to start...';
-        sleep 5;
+        sleep 3;
         
         echo '🔍 Testing NATS connection...';
         for i in 1 2 3 4 5; do
@@ -103,7 +102,7 @@ services:
             echo '✅ NATS is responding';
             break;
           fi;
-          echo '⏳ NATS not ready yet, attempt $i/5';
+          echo '⏳ NATS not ready yet, attempt $$i/5';
           sleep 3;
         done;
         
@@ -188,11 +187,17 @@ services:
     depends_on:
       weather_service:
         condition: service_started
+      subscription_service:
+        condition: service_started
+      mailer_service:
+        condition: service_started
+    
     networks:
       - backend
 
 networks:
   backend:
+    name: backend
 
 volumes:
   pgdata:

@@ -1,4 +1,4 @@
-.PHONY: build up down restart logs install-tools bench bench-http bench-grpc up-bench check-ghz
+.PHONY: build up down restart logs install-tools bench bench-http bench-grpc up-bench check-ghz docker-test-unit docker-integration-test docker-e2e-test
 
 build:
 	docker-compose build
@@ -25,6 +25,21 @@ docker-test-unit:
 
 docker-integration-test:
 	docker compose run --rm test-runner-integration
+
+docker-e2e-test: up
+	docker run --rm \
+		-v $(PWD)/tests/e2e:/e2e \
+		-w /e2e \
+		node:20 \
+		npm install
+
+	docker run --rm \
+		--network=backend \
+		-v $(PWD)/tests/e2e:/e2e \
+		-w /e2e \
+		-e APP_BASE_URL=http://weather_service:8080 \
+		mcr.microsoft.com/playwright:v1.44.0-jammy \
+		npx playwright test
 
 install-tools:
 	@echo "🔧 Installing wrk, hey, and ghz if missing..."
