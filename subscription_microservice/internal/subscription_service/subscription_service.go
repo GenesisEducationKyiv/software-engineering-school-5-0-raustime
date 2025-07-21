@@ -22,19 +22,19 @@ type subscriptionRepo interface {
 	Delete(ctx context.Context, token string) error
 }
 
-type mailerService interface {
-	SendConfirmationEmail(ctx context.Context, email, token string) error
+type messageBroker interface {
+	Publish(subject string, data []byte) error
 }
 
 type SubscriptionService struct {
 	subRepo       subscriptionRepo
-	mailerService mailerService
+	broker 	      messageBroker
 }
 
 func New(sr subscriptionRepo, mailer mailerService) SubscriptionService {
 	return SubscriptionService{
 		subRepo:       sr,
-		mailerService: mailer,
+		broker:  broker,
 	}
 }
 
@@ -77,8 +77,20 @@ func (s SubscriptionService) Create(ctx context.Context, email, city, frequency 
 		return err
 	}
 
-	if err := s.mailerService.SendConfirmationEmail(ctx, email, subscription.Token); err != nil {
-		log.Printf("[SubscriptionService] failed to send confirmation email to %s: %v", email, err)
+	notif := contracts.NotificationMessage{
+	Type:  "confirmation",
+	To:    email,
+	Token: subscription.Token,
+}
+
+	payload, err := json.Marshal(notif)
+	if err != nil {
+		log.Printf("[SubscriptionService] failed to marshal notification: %v", err)
+		return apierrors.ErrFailedSendConfirmEmail
+	}
+
+	if err := s.broker.Publish("mailer.notifications", payload); err != nil {
+		log.Printf("[SubscriptionService] failed to publish confirmation event: %v", err)
 		return apierrors.ErrFailedSendConfirmEmail
 	}
 

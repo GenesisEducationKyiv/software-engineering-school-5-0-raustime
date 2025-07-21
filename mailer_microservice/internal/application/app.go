@@ -8,6 +8,7 @@ import (
 
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
+	"github.com/nats-io/nats.go"
 
 	"mailer_microservice/internal/broker"
 	"mailer_microservice/internal/config"
@@ -18,7 +19,7 @@ import (
 
 type App struct {
 	httpServer *http.Server
-	natsClient *broker.NATSClient
+	natsConn   *nats.Conn
 }
 
 func NewApp() *App {
@@ -39,21 +40,36 @@ func NewApp() *App {
 	mailer := mailer_service.NewMailerService(sender, cfg.AppBaseURL)
 	mailer.SetTemplateDir(cfg.TemplateDir)
 
-	// Start NATS consumer
-	natsClient, err := broker.NewNATSClient(cfg.NATSUrl)
+	// Connect to NATS
+	nc, err := nats.Connect(cfg.NATSUrl)
 	if err != nil {
 		log.Fatalf("❌ failed to connect to NATS: %v", err)
 	}
 
+	jsClient, err := broker.NewJetStreamClient(nc)
+	if err != nil {
+		log.Fatalf("❌ failed to get JetStream context: %v", err)
+	}
+
 	notifConsumer := notification.NewNotificationConsumer(mailer)
 
-	_, err = natsClient.Subscribe("mailer.notifications", func(msg *broker.Message) {
-		go notifConsumer.HandleMessage(context.Background(), msg.Data)
+	// JetStream subscription with manual ack and retry
+	err = jsClient.Subscribe("mailer.notifications", "mailer-consumer", func(msg *nats.Msg) {
+	go func(m *nats.Msg) {
+		err := notifConsumer.HandleMessage(context.Background(), m.Data)
+		if err != nil {
+			_ = m.Nak()
+			return
+			}
+		_ = m.Ack()
+		}(msg)
 	})
+	
 	if err != nil {
-		log.Fatalf("❌ failed to subscribe to mailer.notifications: %v", err)
+		log.Fatalf("❌ failed to subscribe to JetStream: %v", err)
 	}
-	log.Println("📬 Subscribed to 'mailer.notifications'")
+
+	log.Println("📬 Subscribed to JetStream topic 'mailer.notifications'")
 
 	// HTTP + h2c server
 	router := server.NewRouter(mailer)
@@ -76,5 +92,8 @@ func (a *App) Run() error {
 }
 
 func (a *App) Close(_ context.Context) error {
+	if a.natsConn != nil {
+		a.natsConn.Close()
+	}
 	return a.httpServer.Close()
 }

@@ -15,6 +15,10 @@ func NewMockMailerService() *MockMailerService {
 	return &MockMailerService{}
 }
 
+func (m *MockMailerService) GetLastBody() string {
+	return m.LastBody
+}
+
 func (m *MockMailerService) SendEmail(ctx context.Context, to, subject, body string) error {
 	m.LastTo = to
 	m.LastSubject = subject

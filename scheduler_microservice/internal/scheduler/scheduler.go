@@ -13,8 +13,8 @@ type SubscriptionService interface {
 	GetConfirmed(ctx context.Context, frequency string) ([]*contracts.Subscription, error)
 }
 
-type MailerService interface {
-	SendWeatherEmail(ctx context.Context, to, city string, data *contracts.WeatherData, token string) error
+type MailPublisher interface {
+	Publish(subject string, data []byte) error
 }
 
 type WeatherService interface {
@@ -23,15 +23,15 @@ type WeatherService interface {
 
 type Scheduler struct {
 	subSvc     SubscriptionService
-	mailerSvc  MailerService
+	mailPub    MailPublisher
 	weatherSvc WeatherService
 	stopChan   chan struct{}
 }
 
-func NewScheduler(subSvc SubscriptionService, mailSvc MailerService, weatherSvc WeatherService) *Scheduler {
+func NewScheduler(subSvc SubscriptionService, mailPub MailPublisher, weatherSvc WeatherService) *Scheduler {
 	return &Scheduler{
 		subSvc:     subSvc,
-		mailerSvc:  mailSvc,
+		mailPub:    mailPub,
 		weatherSvc: weatherSvc,
 		stopChan:   make(chan struct{}),
 	}
@@ -102,10 +102,25 @@ func (s *Scheduler) processSubscription(ctx context.Context, sub *contracts.Subs
 		return
 	}
 
-	err = s.mailerSvc.SendWeatherEmail(ctx, sub.Email, sub.City, weather, sub.Token)
-	if err != nil {
-		log.Printf("Send error to %s: %v", sub.Email, err)
-	} else {
-		log.Printf("Sent %s update to %s", freq, sub.Email)
+	msg := contracts.NotificationMessage{
+		Type:    "weather",
+		To:      sub.Email,
+		City:    sub.City,
+		Token:   sub.Token,
+		Weather: weather,
 	}
+
+	payload, err := json.Marshal(msg)
+	if err != nil {
+		log.Printf("Failed to marshal notification for %s: %v", sub.Email, err)
+		return
+	}
+
+	if err := s.mailPub.Publish("mailer.notifications", payload); err != nil {
+		log.Printf("Failed to publish notification to %s: %v", sub.Email, err)
+		return
+	}
+
+	log.Printf("📤 Published %s weather update for %s", freq, sub.Email)
 }
+

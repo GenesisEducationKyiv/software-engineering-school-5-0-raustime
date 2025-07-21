@@ -73,10 +73,35 @@ services:
   
   nats:
     image: nats:latest
+    command: ["-js"]
     ports:
       - "4222:4222"
     networks:
       - backend
+  
+  nats-init:
+    image: natsio/nats-box
+    depends_on:
+      - nats
+    entrypoint: >
+      /bin/sh -c "
+        echo '⏳ Waiting for NATS...';
+        sleep 3;
+        nats stream add mailer \
+          --server nats://nats:4222 \
+          --subjects \"mailer.notifications\" \
+          --storage file \
+          --retention limits \
+          --max-msgs 10000 \
+          --ack \
+          --json \
+          --config <(echo '{}');
+        echo '✅ NATS stream mailer created';
+        tail -f /dev/null
+      "
+    networks:
+      - backend
+
 
   mailer_service:
     build:
@@ -90,6 +115,8 @@ services:
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - NATS_URL=nats://nats:4222
+    depends_on:
+      - nats
     networks:
       - backend
 

@@ -3,9 +3,11 @@ package notification
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 
-	"mailer_microservice/internal/mailer_service"
+	"mailer_microservice/internal/contracts"
+	"mailer_microservice/internal/services/mailer_service"
 )
 
 type NotificationConsumer struct {
@@ -16,24 +18,31 @@ func NewNotificationConsumer(mailer mailer_service.MailerServiceProvider) *Notif
 	return &NotificationConsumer{mailer: mailer}
 }
 
-type NotificationMessage struct {
-	To      string `json:"to"`
-	Subject string `json:"subject"`
-	Body    string `json:"body"`
-}
-
-func (c *NotificationConsumer) HandleMessage(ctx context.Context, msg []byte) {
-	var notif NotificationMessage
+func (c *NotificationConsumer) HandleMessage(ctx context.Context, msg []byte) error {
+	var notif contracts.NotificationMessage
 	if err := json.Unmarshal(msg, &notif); err != nil {
 		log.Printf("❌ Failed to decode message: %v", err)
-		return
+		return fmt.Errorf("invalid JSON: %w", err)
 	}
 
-	err := c.mailer.SendEmail(ctx, notif.To, notif.Subject, notif.Body)
+	var err error
+	switch notif.Type {
+	case "confirmation":
+		err = c.mailer.SendConfirmationEmail(ctx, notif.To, notif.Token)
+	case "weather":
+		if notif.Weather == nil {
+			return fmt.Errorf("missing weather field")
+		}
+		err = c.mailer.SendWeatherEmail(ctx, notif.To, notif.City, *notif.Weather, notif.Token)
+	default:
+		err = c.mailer.SendEmail(ctx, notif.To, notif.Subject, notif.Body)
+	}
+
 	if err != nil {
-		log.Printf("❌ Failed to send email: %v", err)
-		return
+		log.Printf("❌ Failed to send %s email to %s: %v", notif.Type, notif.To, err)
+		return fmt.Errorf("failed to send email: %w", err)
 	}
 
-	log.Printf("✅ Email sent to %s", notif.To)
+	log.Printf("✅ [%s] email sent to %s", notif.Type, notif.To)
+	return nil
 }
