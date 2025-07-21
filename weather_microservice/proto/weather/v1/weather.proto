@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package weather;
+
+option go_package = "weather_microservice/gen/go/weather/v1;weatherv1";
+
+service WeatherService {
+  rpc GetWeather(GetWeatherRequest) returns (GetWeatherResponse);
+}
+
+message GetWeatherRequest {
+  string city = 1;
+}
+
+message GetWeatherResponse {
+  double temperature = 1;
+  double humidity = 2;
+  string description = 3;
+}

@@ -2,8 +2,11 @@ name: Run All Tests
 
 on:
   push:
-    branches: [main]
+    branches:
+      - "**"
   pull_request:
+    branches:
+      - "**"
 
 env:
   COMPOSE_PROJECT_NAME: weatherapi
@@ -27,11 +30,8 @@ jobs:
       - name: Create .env file
         run: cp .env.ci .env
 
-      - name: Start Postgres
-        run: docker compose up -d db
-
-      - name: Run Unit Tests
-        run: docker compose run --rm test-runner-unit
+      - name: Run Unit Tests (all microservices)
+        run: make docker-test-unit
 
       - name: Clean up
         run: docker compose down -v
@@ -70,6 +70,9 @@ jobs:
 
       - name: Run Integration Tests
         run: docker compose run --rm test-runner-integration
+
+      - name: Debug docker-compose services
+        run: docker compose config --services
 
       - name: Clean up
         run: docker compose down -v
