@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"sync"
 	"time"
@@ -123,4 +124,3 @@ func (s *Scheduler) processSubscription(ctx context.Context, sub *contracts.Subs
 
 	log.Printf("📤 Published %s weather update for %s", freq, sub.Email)
 }
-
