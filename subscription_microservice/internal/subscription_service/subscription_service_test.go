@@ -15,11 +15,16 @@ import (
 )
 
 // mailerServiceMock implements the mailer service interface.
-type mailerServiceMock struct {
+type messageBrokerMock struct {
 	mock.Mock
 }
 
-func (m *mailerServiceMock) SendConfirmationEmail(ctx context.Context, email, token string) error {
+func (m *messageBrokerMock) Publish(subject string, data []byte) error {
+	args := m.Called(subject, data)
+	return args.Error(0)
+}
+
+func (m *messageBrokerMock) SendConfirmationEmail(ctx context.Context, email, token string) error {
 	args := m.Called(ctx, email, token)
 	return args.Error(0)
 }
@@ -71,8 +76,8 @@ func (m *subscriptionRepoMock) Delete(ctx context.Context, token string) error {
 func TestCreateSubscription(main *testing.T) {
 	main.Run("InvalidEmailEmpty", func(t *testing.T) {
 		repo := &subscriptionRepoMock{}
-		mailer := &mailerServiceMock{}
-		svc := New(repo, mailer)
+		broker := &messageBrokerMock{}
+		svc := New(repo, broker)
 
 		err := svc.Create(context.Background(), "", "TestCity", "daily")
 		require.Equal(t, apierrors.ErrInvalidEmail, err)
@@ -80,8 +85,8 @@ func TestCreateSubscription(main *testing.T) {
 
 	main.Run("InvalidEmailFormat", func(t *testing.T) {
 		repo := &subscriptionRepoMock{}
-		mailer := &mailerServiceMock{}
-		svc := New(repo, mailer)
+		broker := &messageBrokerMock{}
+		svc := New(repo, broker)
 
 		err := svc.Create(context.Background(), "invalid", "TestCity", "daily")
 		require.Equal(t, apierrors.ErrInvalidEmail, err)
@@ -89,8 +94,8 @@ func TestCreateSubscription(main *testing.T) {
 
 	main.Run("InvalidCity", func(t *testing.T) {
 		repo := &subscriptionRepoMock{}
-		mailer := &mailerServiceMock{}
-		svc := New(repo, mailer)
+		broker := &messageBrokerMock{}
+		svc := New(repo, broker)
 
 		err := svc.Create(context.Background(), "user@example.com", "", "daily")
 		require.Equal(t, apierrors.ErrInvalidCity, err)
@@ -98,8 +103,8 @@ func TestCreateSubscription(main *testing.T) {
 
 	main.Run("InvalidFrequency", func(t *testing.T) {
 		repo := &subscriptionRepoMock{}
-		mailer := &mailerServiceMock{}
-		svc := New(repo, mailer)
+		broker := &messageBrokerMock{}
+		svc := New(repo, broker)
 
 		err := svc.Create(context.Background(), "user@example.com", "TestCity", "weekly")
 		require.Equal(t, apierrors.ErrInvalidFrequency, err)
@@ -108,8 +113,8 @@ func TestCreateSubscription(main *testing.T) {
 	main.Run("AlreadySubscribed", func(t *testing.T) {
 		ctx := context.Background()
 		repo := &subscriptionRepoMock{}
-		mailer := &mailerServiceMock{}
-		svc := New(repo, mailer)
+		broker := &messageBrokerMock{}
+		svc := New(repo, broker)
 
 		// Return a non-zero subscription to simulate an already subscribed user.
 		existingSub := models.Subscription{
@@ -125,8 +130,8 @@ func TestCreateSubscription(main *testing.T) {
 	main.Run("CreateRepoError", func(t *testing.T) {
 		ctx := context.Background()
 		repo := &subscriptionRepoMock{}
-		mailer := &mailerServiceMock{}
-		svc := New(repo, mailer)
+		broker := &messageBrokerMock{}
+		svc := New(repo, broker)
 
 		// GetByEmail returns empty subscription.
 		repo.On("GetByEmail", ctx, "user@example.com").Return(models.Subscription{}, nil)
@@ -141,25 +146,25 @@ func TestCreateSubscription(main *testing.T) {
 	main.Run("SendConfirmationEmailError", func(t *testing.T) {
 		ctx := context.Background()
 		repo := &subscriptionRepoMock{}
-		mailer := &mailerServiceMock{}
-		svc := New(repo, mailer)
+		broker := &messageBrokerMock{}
+		svc := New(repo, broker)
 
 		repo.On("GetByEmail", ctx, "user@example.com").Return(models.Subscription{}, nil)
 		repo.On("Create", ctx, mock.Anything).Return(nil)
 		// Mailer returns error.
-		mailer.On("SendConfirmationEmail", ctx, "user@example.com", mock.AnythingOfType("string")).Return(errors.New("send error"))
+		broker.On("Publish", "mailer.notifications", mock.Anything).Return(errors.New("send error"))
 
 		err := svc.Create(ctx, "user@example.com", "TestCity", "daily")
 		require.Equal(t, apierrors.ErrFailedSendConfirmEmail, err)
 		repo.AssertCalled(t, "Create", ctx, mock.Anything)
-		mailer.AssertCalled(t, "SendConfirmationEmail", ctx, "user@example.com", mock.AnythingOfType("string"))
+		broker.AssertCalled(t, "Publish", "mailer.notifications", mock.Anything)
 	})
 
 	main.Run("OK", func(t *testing.T) {
 		ctx := context.Background()
 		repo := &subscriptionRepoMock{}
-		mailer := &mailerServiceMock{}
-		svc := New(repo, mailer)
+		broker := &messageBrokerMock{}
+		svc := New(repo, broker)
 
 		repo.On("GetByEmail", ctx, "user@example.com").Return(models.Subscription{}, nil)
 		// Capture the subscription passed to Create.
@@ -170,13 +175,13 @@ func TestCreateSubscription(main *testing.T) {
 			require.NoError(t, err)
 			require.WithinDuration(t, time.Now(), sub.CreatedAt, time.Second)
 		})
-		mailer.On("SendConfirmationEmail", ctx, "user@example.com", mock.AnythingOfType("string")).Return(nil)
+		broker.On("Publish", "mailer.notifications", mock.Anything).Return(nil)
 
 		err := svc.Create(ctx, "user@example.com", "TestCity", "daily")
 		require.NoError(t, err)
 		repo.AssertCalled(t, "GetByEmail", ctx, "user@example.com")
 		repo.AssertCalled(t, "Create", ctx, mock.AnythingOfType("models.Subscription"))
-		mailer.AssertCalled(t, "SendConfirmationEmail", ctx, "user@example.com", mock.AnythingOfType("string"))
+		broker.AssertCalled(t, "Publish", "mailer.notifications", mock.Anything)
 	})
 }
 
@@ -185,8 +190,8 @@ func TestConfirmSubscription(main *testing.T) {
 		ctx := context.Background()
 		// Create dummies since mailer is unused here.
 		repo := &subscriptionRepoMock{}
-		mailer := &mailerServiceMock{}
-		svc := New(repo, mailer)
+		broker := &messageBrokerMock{}
+		svc := New(repo, broker)
 
 		err := svc.Confirm(ctx, "invalid-token")
 		require.Equal(t, apierrors.ErrInvalidToken, err)
@@ -196,8 +201,8 @@ func TestConfirmSubscription(main *testing.T) {
 		ctx := context.Background()
 		token := uuid.NewString()
 		repo := &subscriptionRepoMock{}
-		mailer := &mailerServiceMock{}
-		svc := New(repo, mailer)
+		broker := &messageBrokerMock{}
+		svc := New(repo, broker)
 
 		// Simulate error when get by token is called.
 		repo.On("GetByToken", ctx, token).Return(models.Subscription{}, errors.New("not found"))
@@ -211,8 +216,8 @@ func TestConfirmSubscription(main *testing.T) {
 		ctx := context.Background()
 		token := uuid.NewString()
 		repo := &subscriptionRepoMock{}
-		mailer := &mailerServiceMock{}
-		svc := New(repo, mailer)
+		broker := &messageBrokerMock{}
+		svc := New(repo, broker)
 
 		// Simulate successful get by token.
 		subscription := models.Subscription{
@@ -232,8 +237,8 @@ func TestConfirmSubscription(main *testing.T) {
 		ctx := context.Background()
 		token := uuid.NewString()
 		repo := &subscriptionRepoMock{}
-		mailer := &mailerServiceMock{}
-		svc := New(repo, mailer)
+		broker := &messageBrokerMock{}
+		svc := New(repo, broker)
 
 		// Simulate successful get by token.
 		subscription := models.Subscription{
@@ -261,8 +266,8 @@ func TestDeleteSubscription(t *testing.T) {
 
 	t.Run("InvalidToken", func(t *testing.T) {
 		repo := &subscriptionRepoMock{}
-		mailer := &mailerServiceMock{}
-		svc := New(repo, mailer)
+		broker := &messageBrokerMock{}
+		svc := New(repo, broker)
 
 		err := svc.Delete(ctx, invalidToken)
 		require.Equal(t, apierrors.ErrInvalidToken, err)
@@ -270,8 +275,8 @@ func TestDeleteSubscription(t *testing.T) {
 
 	t.Run("DeleteError", func(t *testing.T) {
 		repo := &subscriptionRepoMock{}
-		mailer := &mailerServiceMock{}
-		svc := New(repo, mailer)
+		broker := &messageBrokerMock{}
+		svc := New(repo, broker)
 		repo.On("Delete", ctx, validToken).Return(errors.New("delete error"))
 
 		err := svc.Delete(ctx, validToken)
@@ -281,8 +286,8 @@ func TestDeleteSubscription(t *testing.T) {
 
 	t.Run("OK", func(t *testing.T) {
 		repo := &subscriptionRepoMock{}
-		mailer := &mailerServiceMock{}
-		svc := New(repo, mailer)
+		broker := &messageBrokerMock{}
+		svc := New(repo, broker)
 		repo.On("Delete", ctx, validToken).Return(nil)
 
 		err := svc.Delete(ctx, validToken)
@@ -295,8 +300,8 @@ func TestGetConfirmedSubscription(t *testing.T) {
 	t.Run("Error", func(t *testing.T) {
 		ctx := context.Background()
 		repo := &subscriptionRepoMock{}
-		mailer := &mailerServiceMock{}
-		svc := New(repo, mailer)
+		broker := &messageBrokerMock{}
+		svc := New(repo, broker)
 
 		// Simulate repository error
 		repo.On("GetConfirmed", ctx, "daily").Return(nil, errors.New("db error"))
@@ -310,8 +315,8 @@ func TestGetConfirmedSubscription(t *testing.T) {
 	t.Run("OK", func(t *testing.T) {
 		ctx := context.Background()
 		repo := &subscriptionRepoMock{}
-		mailer := &mailerServiceMock{}
-		svc := New(repo, mailer)
+		broker := &messageBrokerMock{}
+		svc := New(repo, broker)
 
 		// Prepare models.Subscription slice to be returned by repo.
 		modelSubs := []models.Subscription{

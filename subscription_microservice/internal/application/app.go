@@ -13,13 +13,14 @@ import (
 
 	"subscription_microservice/internal/broker"
 	"subscription_microservice/internal/config"
+	"subscription_microservice/internal/db"
 	"subscription_microservice/internal/db/migration"
 	"subscription_microservice/internal/db/repositories"
 	"subscription_microservice/internal/handler"
-	"subscription_microservice/internal/db"
-	"subscription_microservice/internal/services/subscription_service"
+	"subscription_microservice/internal/subscription_service"
 
 	subscriptionv1 "subscription_microservice/gen/go/subscription/v1/subscriptionv1connect"
+
 	"connectrpc.com/grpcreflect"
 )
 

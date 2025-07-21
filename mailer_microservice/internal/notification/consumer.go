@@ -7,7 +7,7 @@ import (
 	"log"
 
 	"mailer_microservice/internal/contracts"
-	"mailer_microservice/internal/services/mailer_service"
+	"mailer_microservice/internal/mailer_service"
 )
 
 type NotificationConsumer struct {

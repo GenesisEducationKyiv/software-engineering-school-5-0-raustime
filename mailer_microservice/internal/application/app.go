@@ -6,9 +6,9 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/nats-io/nats.go"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
-	"github.com/nats-io/nats.go"
 
 	"mailer_microservice/internal/broker"
 	"mailer_microservice/internal/config"
@@ -55,16 +55,15 @@ func NewApp() *App {
 
 	// JetStream subscription with manual ack and retry
 	err = jsClient.Subscribe("mailer.notifications", "mailer-consumer", func(msg *nats.Msg) {
-	go func(m *nats.Msg) {
-		err := notifConsumer.HandleMessage(context.Background(), m.Data)
-		if err != nil {
-			_ = m.Nak()
-			return
+		go func(m *nats.Msg) {
+			if err := notifConsumer.HandleMessage(context.Background(), m.Data); err != nil {
+				_ = m.Nak()
+				return
 			}
-		_ = m.Ack()
+			_ = m.Ack()
 		}(msg)
 	})
-	
+
 	if err != nil {
 		log.Fatalf("❌ failed to subscribe to JetStream: %v", err)
 	}
@@ -82,8 +81,9 @@ func NewApp() *App {
 
 	return &App{
 		httpServer: httpServer,
-		natsClient: natsClient,
+		natsConn:   nc,
 	}
+
 }
 
 func (a *App) Run() error {

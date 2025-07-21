@@ -2,9 +2,10 @@ package subscription_service
 
 import (
 	"context"
+	"encoding/json"
+	"log"
 	"net/mail"
 	"time"
-	"log"
 
 	"github.com/google/uuid"
 
@@ -27,13 +28,13 @@ type messageBroker interface {
 }
 
 type SubscriptionService struct {
-	subRepo       subscriptionRepo
-	broker 	      messageBroker
+	subRepo subscriptionRepo
+	broker  messageBroker
 }
 
-func New(sr subscriptionRepo, mailer mailerService) SubscriptionService {
+func New(sr subscriptionRepo, broker messageBroker) SubscriptionService {
 	return SubscriptionService{
-		subRepo:       sr,
+		subRepo: sr,
 		broker:  broker,
 	}
 }
@@ -56,7 +57,7 @@ func (s SubscriptionService) Create(ctx context.Context, email, city, frequency 
 	if !validFreq[frequency] {
 		return apierrors.ErrInvalidFrequency
 	}
-	existing,err := s.subRepo.GetByEmail(ctx, email)
+	existing, err := s.subRepo.GetByEmail(ctx, email)
 	if err != nil && err != apierrors.ErrSubscriptionNotFound {
 		// лог будь-яких несподіваних помилок
 		log.Printf("[SubscriptionService] error checking existing email: %v", err)
@@ -78,10 +79,10 @@ func (s SubscriptionService) Create(ctx context.Context, email, city, frequency 
 	}
 
 	notif := contracts.NotificationMessage{
-	Type:  "confirmation",
-	To:    email,
-	Token: subscription.Token,
-}
+		Type:  "confirmation",
+		To:    email,
+		Token: subscription.Token,
+	}
 
 	payload, err := json.Marshal(notif)
 	if err != nil {

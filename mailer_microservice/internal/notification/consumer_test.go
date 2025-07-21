@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"mailer_microservice/internal/contracts"
+	"mailer_microservice/internal/mailer_service"
 	"mailer_microservice/internal/notification"
-	"mailer_microservice/internal/services/mailer_service"
 )
 
 func TestHandleMessage_Custom_Success(t *testing.T) {
