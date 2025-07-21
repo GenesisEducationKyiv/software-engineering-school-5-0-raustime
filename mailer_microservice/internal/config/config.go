@@ -15,6 +15,7 @@ type Config struct {
 	SMTPUser     string
 	SMTPPassword string
 	TemplateDir  string
+	NATSUrl      string
 	Environment  string
 }
 
@@ -35,6 +36,7 @@ func Load() *Config {
 		SMTPUser:     getEnv("SMTP_USER", ""),
 		SMTPPassword: getEnv("SMTP_PASSWORD", ""),
 		TemplateDir:  getEnv("TEMPLATE_DIR", "internal/templates"),
+		NATSUrl:      getEnv("NATS_URL", "nats://localhost:4222"),
 		Environment:  strings.ToLower(getEnv("ENVIRONMENT", "development")),
 	}
 }
