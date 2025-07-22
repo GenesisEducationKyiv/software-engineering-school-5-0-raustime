@@ -2,10 +2,12 @@ package application
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/uptrace/bun"
 	"google.golang.org/grpc"
@@ -83,22 +85,53 @@ func NewApp(cfg *config.Config) (*App, error) {
 	}, nil
 }
 
-func (a *App) Run() error {
+func (a *App) Run(ctx context.Context) error {
+	errCh := make(chan error, 2)
+
 	// gRPC
 	go func() {
 		listener, err := net.Listen("tcp", ":"+a.cfg.GrpcPort)
 		if err != nil {
-			log.Fatalf("failed to listen: %v", err)
+			errCh <- fmt.Errorf("failed to listen: %w", err)
+			return
 		}
 		log.Printf("subscription-service gRPC listening on port %s", a.cfg.GrpcPort)
-		if err := a.grpcServer.Serve(listener); err != nil {
-			log.Fatalf("gRPC server error: %v", err)
+		if err := a.grpcServer.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+			errCh <- fmt.Errorf("gRPC server error: %w", err)
 		}
 	}()
 
 	// HTTP
-	log.Printf("subscription-service HTTP gateway listening on port %s", a.cfg.HttpPort)
-	return a.httpServer.ListenAndServe()
+	go func() {
+		log.Printf("subscription-service HTTP gateway listening on port %s", a.cfg.HttpPort)
+		if err := a.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errCh <- fmt.Errorf("HTTP server error: %w", err)
+		}
+	}()
+
+	// Очікуємо завершення або по ctx
+	select {
+	case <-ctx.Done():
+		// контекст завершено, ініціюємо graceful shutdown
+		log.Println("🛑 context canceled, shutting down servers...")
+
+		grpcShutdown := make(chan struct{})
+		go func() {
+			a.grpcServer.GracefulStop()
+			close(grpcShutdown)
+		}()
+
+		ctxShutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := a.httpServer.Shutdown(ctxShutdown); err != nil {
+			log.Printf("HTTP shutdown error: %v", err)
+		}
+		<-grpcShutdown
+		return nil
+
+	case err := <-errCh:
+		return err
+	}
 }
 
 func (a *App) Close(ctx context.Context) error {

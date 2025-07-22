@@ -29,14 +29,14 @@ func main() {
 	defer stop()
 
 	go func() {
-		if err := app.Run(); err != nil {
+		if err := app.Run(ctx); err != nil {
 			log.Fatalf("Application error: %v", err)
 		}
 	}()
 
 	<-ctx.Done()
 	log.Println("🔌 Shutting down gracefully...")
-	if err := app.Close(context.Background()); err != nil {
+	if err := app.Close(ctx); err != nil {
 		log.Printf("Shutdown error: %v", err)
 	}
 }
