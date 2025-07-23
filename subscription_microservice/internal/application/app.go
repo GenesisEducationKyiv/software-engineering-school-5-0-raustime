@@ -109,29 +109,29 @@ func (a *App) Run(ctx context.Context) error {
 		}
 	}()
 
-	// Очікуємо завершення або по ctx
 	select {
 	case <-ctx.Done():
-		// контекст завершено, ініціюємо graceful shutdown
 		log.Println("🛑 context canceled, shutting down servers...")
-
-		grpcShutdown := make(chan struct{})
-		go func() {
-			a.grpcServer.GracefulStop()
-			close(grpcShutdown)
-		}()
-
-		ctxShutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := a.httpServer.Shutdown(ctxShutdown); err != nil {
-			log.Printf("HTTP shutdown error: %v", err)
-		}
-		<-grpcShutdown
-		return nil
-
+		// продовжуємо shutdown нижче
 	case err := <-errCh:
-		return err
+		log.Printf("💥 server error occurred: %v", err)
+		// продовжуємо shutdown нижче, після логування
 	}
+
+	// Graceful shutdown
+	grpcShutdown := make(chan struct{})
+	go func() {
+		a.grpcServer.GracefulStop()
+		close(grpcShutdown)
+	}()
+
+	ctxShutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := a.httpServer.Shutdown(ctxShutdown); err != nil {
+		log.Printf("HTTP shutdown error: %v", err)
+	}
+	<-grpcShutdown
+	return nil
 }
 
 func (a *App) Close(ctx context.Context) error {
