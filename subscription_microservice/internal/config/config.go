@@ -12,6 +12,7 @@ type Config struct {
 	MailerGRPCAddr  string
 	DatabaseURL     string
 	DatabaseTestURL string
+	NATSUrl         string
 	Environment     string
 	BunDebugMode    string `env:"BUNDEBUG"`
 }
@@ -25,6 +26,7 @@ func Load() *Config {
 		MailerGRPCAddr:  getEnv("MAILER_GRPC_URL", "http://localhost:8089"),
 		DatabaseURL:     getEnv("DB_URL", ""),
 		DatabaseTestURL: getEnv("TEST_DB_URL", ""),
+		NATSUrl:         getEnv("NATS_URL", "nats://localhost:4222"),
 		Environment:     strings.ToLower(getEnv("ENVIRONMENT", "development")),
 		BunDebugMode:    getEnv("BUNDEBUG", "0"),
 	}

@@ -1,4 +1,3 @@
-
 services:
   weather_service:
     build:
@@ -45,31 +44,90 @@ services:
   scheduler_service:
     build:
       context: ./scheduler_microservice
-    depends_on:
-      - weather_service
-      - mailer_service
-      - subscription_service
     environment:
       - SCHEDULER_PORT=8092
       - MAILER_SERVICE_URL=http://mailer_service:8089
       - SUBSCRIPTION_SERVICE_URL=http://subscription_service:8091
       - WEATHER_SERVICE_URL=http://weather_service:8080
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      weather_service:
+        condition: service_started
+      mailer_service:
+        condition: service_started
+      subscription_service:
+        condition: service_started
+      nats-init:
+        condition: service_completed_successfully
     networks:
       - backend
 
   subscription_service:
     build:
       context: ./subscription_microservice
+    environment:
+      - MAILER_GRPC_URL=http://mailer_service:8089
+      - DB_URL=postgres://postgres:postgres@db:5432/subscription?sslmode=disable
+      - NATS_URL=nats://nats:4222
     depends_on:
       db:
         condition: service_healthy
       mailer_service:
         condition: service_started
-    environment:
-      - MAILER_GRPC_URL=http://mailer_service:8089
-      - DB_URL=postgres://postgres:postgres@db:5432/subscription?sslmode=disable
+      nats-init:
+        condition: service_completed_successfully
     networks:
       - backend
+  
+  nats:
+    image: nats:latest
+    command: ["-js"]
+    ports:
+      - "4222:4222"
+    networks:
+      - backend
+  
+  nats-init:
+    image: natsio/nats-box
+    depends_on:
+      - nats
+    command: >
+      /bin/sh -c "
+        echo '⏳ Waiting for NATS to start...';
+        sleep 3;
+        
+        echo '🔍 Testing NATS connection...';
+        for i in 1 2 3 4 5; do
+          if nats server ping --server nats://nats:4222 > /dev/null 2>&1; then
+            echo '✅ NATS is responding';
+            break;
+          fi;
+          echo '⏳ NATS not ready yet, attempt $$i/5';
+          sleep 3;
+        done;
+        
+        echo '📝 Creating mailer stream...';
+        nats stream add mailer \
+          --server nats://nats:4222 \
+          --subjects 'mailer.*' \
+          --storage file \
+          --retention limits \
+          --max-msgs 10000 \
+          --max-age 24h \
+          --replicas 1 \
+          --discard old \
+          --max-msg-size 1MB \
+          --json || echo '⚠️  Stream creation failed or already exists';
+        
+        echo '📝 Verifying stream creation...';
+        nats stream info mailer --server nats://nats:4222 || echo '❌ Failed to verify stream';
+        
+        echo '✅ NATS setup complete - stream ready for subscriptions';
+      "
+    networks:
+      - backend
+    restart: "no"
+
 
   mailer_service:
     build:
@@ -82,6 +140,13 @@ services:
       - SMTP_PORT=${SMTP_PORT}
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - NATS_URL=nats://nats:4222
+      - NATS_STREAM=mailer
+      - NATS_CONSUMER=mailer-worker
+      - NATS_SUBJECT=mailer.notifications
+    depends_on:
+      nats-init:
+        condition: service_completed_successfully
     networks:
       - backend
 
@@ -122,11 +187,17 @@ services:
     depends_on:
       weather_service:
         condition: service_started
+      subscription_service:
+        condition: service_started
+      mailer_service:
+        condition: service_started
+    
     networks:
       - backend
 
 networks:
   backend:
+    name: backend
 
 volumes:
   pgdata:

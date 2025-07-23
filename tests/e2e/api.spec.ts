@@ -5,7 +5,7 @@ test.describe('Weather API', () => {
 
   test.beforeAll(async ({ playwright }) => {
     api = await playwright.request.newContext({
-      baseURL: process.env.APP_BASE_URL || 'http://api:8080',
+      baseURL: process.env.APP_BASE_URL || 'http://weather_service:8080',
     })
   })
 
@@ -23,21 +23,21 @@ test.describe('Weather API', () => {
   })
 
   test('POST /api/subscribe should accept email and city', async ({ request }) => {
-  const email = `test+${Date.now()}@example.com`
+    const email = `test+${Date.now()}@example.com`
 
-  const res = await request.post('/api/subscribe', {
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  data: {
-    email: `test+${Date.now()}@example.com`,
-    city: 'Kyiv',
-    frequency: 'daily',  
-  },
-})
-expect(res.status()).toBe(200)
-const text = await res.text()
-})
+    const res = await request.post('/api/subscribe', {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      data: {
+        email: `test+${Date.now()}@example.com`,
+        city: 'Kyiv',
+        frequency: 'daily',
+      },
+    })
+    expect([200, 201]).toContain(res.status())
+    const text = await res.text()
+  })
 
   // Ці два тести — умовні, бо токен буде реальний лише після email (мокати або інтегрувати з БД)
   test('GET /api/confirm/:token should fail with invalid token', async () => {

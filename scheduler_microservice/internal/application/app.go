@@ -3,14 +3,17 @@ package application
 import (
 	"log"
 	"net/http"
-	"scheduler_microservice/internal/clients"
+
+	"scheduler_microservice/internal/broker"
 	"scheduler_microservice/internal/config"
 	"scheduler_microservice/internal/scheduler"
+	"scheduler_microservice/internal/clients"
 )
 
 type App struct {
-	scheduler *scheduler.Scheduler
-	config    *config.Config
+	scheduler  *scheduler.Scheduler
+	config     *config.Config
+	natsClient *broker.NATSClient
 }
 
 func NewApp() *App {
@@ -22,13 +25,21 @@ func NewApp() *App {
 	httpClient := http.DefaultClient
 
 	subClient := clients.NewSubscriptionClient(httpClient, cfg.SubscriptionURL)
-	mailerClient := clients.NewMailerClient(cfg.MailerServiceURL)
 	weatherClient := clients.NewWeatherHttpClient(cfg.WeatherServiceURL)
 
-	s := scheduler.NewScheduler(subClient, mailerClient, weatherClient)
+	// 🔄 Замість mailerClient — підключення до NATS
+	natsClient, err := broker.NewNATSClient(cfg.NATSUrl)
+	if err != nil {
+		log.Fatalf("failed to connect to NATS: %v", err)
+	}
+
+	// 🆕 передаємо NATS publisher замість mailer
+	s := scheduler.NewScheduler(subClient, natsClient, weatherClient)
+
 	return &App{
-		scheduler: s,
-		config:    cfg,
+		scheduler:  s,
+		config:     cfg,
+		natsClient: natsClient,
 	}
 }
 
@@ -38,6 +49,9 @@ func (a *App) Run() {
 
 func (a *App) Shutdown() {
 	a.scheduler.Stop()
+	if a.natsClient != nil {
+		a.natsClient.Close()
+	}
 }
 
 func (a *App) GetConfig() *config.Config {

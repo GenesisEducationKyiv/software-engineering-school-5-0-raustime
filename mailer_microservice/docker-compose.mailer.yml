@@ -11,3 +11,4 @@ services:
       - SMTP_PORT=587
       - SMTP_USER=test@example.com
       - SMTP_PASSWORD=pass123
+      - NATS_URL=nats://nats:4222
