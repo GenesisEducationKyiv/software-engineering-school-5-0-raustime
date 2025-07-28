@@ -12,12 +12,16 @@ type Config struct {
 	AppBaseURL             string
 	Port                   string
 	GRPCPort               string
+	ExtAPITimeout          time.Duration
+	OpenWeatherBaseURL     string
 	OpenWeatherKey         string
+	WeatherBaseURL         string
 	WeatherKey             string
 	SubscriptionServiceURL string
 	NATSUrl                string
 	Environment            string
 	Cache                  CacheConfig
+	LogPath                string
 }
 
 type CacheConfig struct {
@@ -63,16 +67,22 @@ func Load() *Config {
 		},
 	}
 
+	ExtAPITimeoutSec, _ := strconv.Atoi(getEnv("EXT_API_TIMEOUT_SECONDS", "10"))
+
 	return &Config{
 		AppBaseURL:             getEnv("APP_BASE_URL", "http://localhost:8080"),
 		Port:                   getEnv("PORT", "8080"),
 		GRPCPort:               getEnv("GRPC_PORT", "8081"),
+		ExtAPITimeout:          time.Duration(ExtAPITimeoutSec) * time.Second,
+		OpenWeatherBaseURL:     getEnv("OPENWEATHER_BASE_URL", "https://api.openweathermap.org/data/2.5"),
 		OpenWeatherKey:         getEnv("OPENWEATHER_API_KEY", ""),
+		WeatherBaseURL:         getEnv("OPENWEATHER_BASE_URL", "https://api.weatherapi.com/v1"),
 		WeatherKey:             getEnv("WEATHER_API_KEY", ""),
 		SubscriptionServiceURL: getEnv("SUBSCRIPTION_SERVICE_URL", "http://localhost:8091"),
 		NATSUrl:                getEnv("NATS_URL", "nats://localhost:4222"),
 		Environment:            strings.ToLower(getEnv("ENVIRONMENT", "development")),
 		Cache:                  cacheConfig,
+		LogPath:                getEnv("LOG_PATH", "weather.log"),
 	}
 
 }

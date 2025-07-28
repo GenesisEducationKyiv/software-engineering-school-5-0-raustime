@@ -45,19 +45,19 @@ func InitWeatherService(cfg *config.Config) (weather_service.WeatherService, err
 		redisCache = cache.NoopWeatherCache{}
 	}
 
+	// Setup logger
+	logger := logging.NewZapWeatherLogger(cfg.LogPath)
+
 	// Setup adapters
-	openWeather, err := adapters.NewOpenWeatherAdapter(cfg.OpenWeatherKey)
+	openWeather, err := adapters.NewOpenWeatherAdapter(cfg.OpenWeatherKey, cfg.OpenWeatherBaseURL, cfg.ExtAPITimeout)
 	if err != nil {
 		return weather_service.WeatherService{}, fmt.Errorf("failed to create OpenWeather adapter: %w", err)
 	}
 
-	weatherAPI, err := adapters.NewWeatherAPIAdapter(cfg.WeatherKey)
+	weatherAPI, err := adapters.NewWeatherAdapter(cfg.WeatherKey, cfg.WeatherBaseURL, cfg.ExtAPITimeout)
 	if err != nil {
 		return weather_service.WeatherService{}, fmt.Errorf("failed to create WeatherAPI adapter: %w", err)
 	}
-
-	// Setup logger
-	logger := logging.NewZapWeatherLogger("weather.log")
 
 	// Setup chain
 	weatherChain := chain.NewWeatherChain(logger)

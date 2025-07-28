@@ -3,7 +3,9 @@ package chain
 import (
 	"context"
 	"fmt"
+
 	"weather_microservice/internal/contracts"
+	"weather_microservice/internal/logging"
 )
 
 // WeatherHandler defines the interface for weather handlers in the chain.
@@ -42,10 +44,14 @@ func (h *BaseWeatherHandler) GetProviderName() string {
 
 func (h *BaseWeatherHandler) Handle(ctx context.Context, city string) (contracts.WeatherData, error) {
 	data, err := h.api.FetchWeather(ctx, city)
-	// Logging result every provider
-	if logger := ctx.Value(weatherLoggerKey); logger != nil {
-		if wl, ok := logger.(WeatherLogger); ok {
-			wl.LogResponse(h.name, data, err)
+
+	if v := ctx.Value(weatherLoggerKey); v != nil {
+		if logger, ok := v.(logging.Logger); ok {
+			if err != nil {
+				logger.Error(ctx, h.name, nil, err)
+			} else {
+				logger.Info(ctx, h.name, data)
+			}
 		}
 	}
 
@@ -55,20 +61,17 @@ func (h *BaseWeatherHandler) Handle(ctx context.Context, city string) (contracts
 		}
 		return contracts.WeatherData{}, fmt.Errorf("all weather providers failed, last error from %s: %w", h.name, err)
 	}
+
 	return data, nil
 }
 
 // WeatherChain manages the chain of weather providers.
 type WeatherChain struct {
 	firstHandler WeatherHandler
-	logger       WeatherLogger
+	logger       logging.Logger
 }
 
-type WeatherLogger interface {
-	LogResponse(provider string, data contracts.WeatherData, err error)
-}
-
-func NewWeatherChain(logger WeatherLogger) *WeatherChain {
+func NewWeatherChain(logger logging.Logger) *WeatherChain {
 	return &WeatherChain{
 		logger: logger,
 	}
@@ -92,4 +95,3 @@ func (c *WeatherChain) GetWeather(ctx context.Context, city string) (contracts.W
 
 	return c.firstHandler.Handle(ctx, city)
 }
-
