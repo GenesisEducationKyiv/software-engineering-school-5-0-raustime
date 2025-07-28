@@ -10,6 +10,11 @@ import (
 	"mailer_microservice/internal/mailer_service"
 )
 
+const (
+	NotificationTypeConfirmation = "confirmation"
+	NotificationTypeWeather      = "weather"
+)
+
 type NotificationConsumer struct {
 	mailer mailer_service.MailerServiceProvider
 }
@@ -27,9 +32,9 @@ func (c *NotificationConsumer) HandleMessage(ctx context.Context, msg []byte) er
 
 	var err error
 	switch notif.Type {
-	case "confirmation":
+	case NotificationTypeConfirmation:
 		err = c.mailer.SendConfirmationEmail(ctx, notif.To, notif.Token)
-	case "weather":
+	case NotificationTypeWeather:
 		if notif.Weather == nil {
 			return fmt.Errorf("missing weather field")
 		}
