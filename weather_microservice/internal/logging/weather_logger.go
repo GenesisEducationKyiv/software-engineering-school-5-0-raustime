@@ -1,10 +1,12 @@
 package logging
 
 import (
-	"encoding/json"
-	"fmt"
-	"log"
-	"os"
+	"time"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
+
 	"weather_microservice/internal/contracts"
 )
 
@@ -12,48 +14,53 @@ type WeatherLogger interface {
 	LogResponse(provider string, data contracts.WeatherData, err error)
 }
 
-type FileWeatherLogger struct {
-	logFile string
+type ZapWeatherLogger struct {
+	logger *zap.Logger
 }
 
-func NewFileWeatherLogger(logFile string) *FileWeatherLogger {
-	return &FileWeatherLogger{
-		logFile: logFile,
+func NewZapWeatherLogger(logPath string) *ZapWeatherLogger {
+	writerSyncer := zapcore.AddSync(&lumberjack.Logger{
+		Filename:   logPath,
+		MaxSize:    10, // MB
+		MaxBackups: 5,
+		MaxAge:     30, // days
+		Compress:   true,
+	})
+
+	encoderConfig := zap.NewProductionEncoderConfig()
+	encoderConfig.TimeKey = "timestamp"
+	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	encoderConfig.LevelKey = "level"
+	encoderConfig.MessageKey = "msg"
+
+	core := zapcore.NewCore(
+		zapcore.NewJSONEncoder(encoderConfig),
+		writerSyncer,
+		zap.InfoLevel,
+	)
+
+	return &ZapWeatherLogger{
+		logger: zap.New(core),
 	}
 }
 
-func (l *FileWeatherLogger) LogResponse(provider string, data contracts.WeatherData, err error) {
-	logEntry := map[string]interface{}{
-		"provider": provider,
-		"success":  err == nil,
+func (z *ZapWeatherLogger) LogResponse(provider string, data contracts.WeatherData, err error) {
+	fields := []zap.Field{
+		zap.String("provider", provider),
+		zap.Time("timestamp", time.Now()),
 	}
 
 	if err != nil {
-		logEntry["error"] = err.Error()
+		fields = append(fields, zap.Bool("success", false), zap.String("error", err.Error()))
+		z.logger.Error("weather response failed", fields...)
 	} else {
-		logEntry["response"] = data
-	}
-
-	logJSON, _ := json.Marshal(logEntry)
-	logMessage := string(logJSON)
-
-	// Log to file.
-	l.logToFile(logMessage)
-
-	// Also log to console for debugging.
-	log.Printf("%s - Response: %s", provider, logMessage)
-}
-
-func (l *FileWeatherLogger) logToFile(logMessage string) {
-	file, err := os.OpenFile(l.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Printf("Failed to open log file: %v", err)
-		return
-	}
-	defer func() { _ = file.Close() }()
-
-	if _, err := fmt.Fprintf(file, "%s\n", logMessage); err != nil {
-		log.Printf("Failed to write to log file: %v", err)
+		fields = append(fields,
+			zap.Bool("success", true),
+			zap.Float64("temperature", data.Temperature),
+			zap.Float64("humidity", data.Humidity),
+			zap.String("description", data.Description),
+		)
+		z.logger.Info("weather response received", fields...)
 	}
 }
 
@@ -66,6 +73,7 @@ type LogEntry struct {
 	Provider string
 	Data     contracts.WeatherData
 	Error    error
+	Success  bool
 }
 
 func NewMockLogger() *MockLogger {
@@ -79,13 +87,12 @@ func (m *MockLogger) LogResponse(provider string, data contracts.WeatherData, er
 		Provider: provider,
 		Data:     data,
 		Error:    err,
+		Success:  err == nil,
 	})
-
-	// Optional: also log to console for debugging in tests.
-	log.Printf("[MOCK] %s - Success: %t", provider, err == nil)
 }
 
-// Helper methods for test assertions.
+// ===== 🧪 Test helper methods =====
+
 func (m *MockLogger) GetLogCount() int {
 	return len(m.LoggedResponses)
 }

@@ -7,8 +7,9 @@ import (
 	"weather_microservice/internal/chain"
 	"weather_microservice/internal/config"
 	"weather_microservice/internal/contracts"
-	"weather_microservice/internal/weather_service"
 	"weather_microservice/internal/logging"
+	"weather_microservice/internal/metrics"
+	"weather_microservice/internal/weather_service"
 )
 
 func InitWeatherService(cfg *config.Config) (weather_service.WeatherService, error) {
@@ -16,14 +17,16 @@ func InitWeatherService(cfg *config.Config) (weather_service.WeatherService, err
 		return weather_service.WeatherService{}, fmt.Errorf("failed to load config")
 	}
 
-	// Register metrics.
-	metrics := cache.NewPrometheusMetrics()
-	metrics.Register()
+	// Register Prometheus metrics
+	cacheRawMetrics := metrics.NewCacheMetrics()
+	cacheMetrics := metrics.NewCacheMetricsAdapter(cacheRawMetrics)
+	metrics.RegisterAll(cacheRawMetrics)
+	metrics.RegisterWeatherMetrics()
 
 	// Setup cache
 	var redisCache contracts.WeatherCache
 	if cfg.Cache.Enabled {
-		redisCache =  cache.NewRedisCache(
+		redisCache = cache.NewRedisCache(
 			cache.RedisConfig{
 				Addr:     cfg.Cache.Redis.Addr,
 				Password: cfg.Cache.Redis.Password,
@@ -35,9 +38,9 @@ func InitWeatherService(cfg *config.Config) (weather_service.WeatherService, err
 				IsEnabled:         cfg.Cache.Enabled,
 				DefaultExpiration: cfg.Cache.Expiration,
 			},
-			metrics,
+			cacheMetrics, // адаптер для інтерфейсу cache.Metrics
 		)
-	
+
 	} else {
 		redisCache = cache.NoopWeatherCache{}
 	}
@@ -54,8 +57,8 @@ func InitWeatherService(cfg *config.Config) (weather_service.WeatherService, err
 	}
 
 	// Setup logger
-	logger := logging.NewFileWeatherLogger("weather.log")
-		
+	logger := logging.NewZapWeatherLogger("weather.log")
+
 	// Setup chain
 	weatherChain := chain.NewWeatherChain(logger)
 

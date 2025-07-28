@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"weather_microservice/internal/contracts"
-
 	"github.com/redis/go-redis/v9"
+
+	"weather_microservice/internal/contracts"
 )
 
 const (
@@ -22,6 +22,13 @@ const (
 	defaultRedisPoolSize = 10
 	defaultRedisTimeout  = 5 * time.Second
 )
+
+type Metrics interface {
+	IncCacheHits()
+	IncCacheMisses()
+	IncCacheSets()
+	IncCacheDeletes()
+}
 
 type RedisClient interface {
 	Get(ctx context.Context, key string) *redis.StringCmd
