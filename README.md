@@ -46,7 +46,6 @@ make up-bench                   # Порівняльний бенчмарк gRPC
 
 - buf generate для генерації
 
-
 ## 📊 Порівняльний тест HTTP vs ConnectRPC (gRPC)
 
 | Показник              | **HTTP REST (wrk)** | **gRPC ConnectRPC (ghz)** |

@@ -15,6 +15,7 @@ type Config struct {
 	OpenWeatherKey         string
 	WeatherKey             string
 	SubscriptionServiceURL string
+	NATSUrl                string
 	Environment            string
 	Cache                  CacheConfig
 }
@@ -69,6 +70,7 @@ func Load() *Config {
 		OpenWeatherKey:         getEnv("OPENWEATHER_API_KEY", ""),
 		WeatherKey:             getEnv("WEATHER_API_KEY", ""),
 		SubscriptionServiceURL: getEnv("SUBSCRIPTION_SERVICE_URL", "http://localhost:8091"),
+		NATSUrl:                getEnv("NATS_URL", "nats://localhost:4222"),
 		Environment:            strings.ToLower(getEnv("ENVIRONMENT", "development")),
 		Cache:                  cacheConfig,
 	}

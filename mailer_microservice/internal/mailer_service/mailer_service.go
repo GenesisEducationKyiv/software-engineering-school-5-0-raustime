@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
 	"html/template"
+	"log"
 	"path/filepath"
 
 	"mailer_microservice/internal/contracts"
@@ -15,6 +15,7 @@ import (
 type MailerServiceProvider interface {
 	SendConfirmationEmail(ctx context.Context, email, token string) error
 	SendWeatherEmail(ctx context.Context, email, city string, weather contracts.WeatherData, token string) error
+	SendEmail(ctx context.Context, to, subject, html string) error
 }
 
 // MailerService implements MailerServiceProvider.
@@ -99,6 +100,10 @@ func (s *MailerService) SendWeatherEmail(ctx context.Context, email, city string
 
 	log.Printf("[MailerService] ✅ weather email sent to %s", email)
 	return nil
+}
+
+func (s *MailerService) SendEmail(ctx context.Context, to, subject, html string) error {
+	return s.emailSender.Send(to, subject, html)
 }
 
 // renderTemplate renders HTML template with data.
