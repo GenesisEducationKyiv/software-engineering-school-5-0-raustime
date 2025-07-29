@@ -12,9 +12,10 @@ import (
 
 	"weather_microservice/internal/adapters"
 	"weather_microservice/internal/apierrors"
+	"weather_microservice/internal/testutils"
 )
 
-func newAdapter(t *testing.T, baseURL string) *adapters.OpenWeatherAdapter {
+func newOpenweatherAdapter(t *testing.T, baseURL string) *adapters.OpenWeatherAdapter {
 	t.Helper()
 
 	adapter, err := adapters.NewOpenWeatherAdapter("fake-key", baseURL, 3*time.Second)
@@ -30,9 +31,9 @@ func TestOpenWeatherAdapter_CityNotFound(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	adapter := newAdapter(t, mockServer.URL)
+	adapter := newOpenweatherAdapter(t, mockServer.URL)
 
-	_, err := adapter.FetchWeather(withLogger(context.Background()), "InvalidCity")
+	_, err := adapter.FetchWeather(testutils.WithMockLogger(context.Background()), "InvalidCity")
 	require.ErrorIs(t, err, apierrors.ErrCityNotFound)
 }
 
@@ -48,9 +49,9 @@ func TestOpenWeatherAdapter_Success(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	adapter := newAdapter(t, mockServer.URL)
+	adapter := newOpenweatherAdapter(t, mockServer.URL)
 
-	data, err := adapter.FetchWeather(withLogger(context.Background()), "Kyiv")
+	data, err := adapter.FetchWeather(testutils.WithMockLogger(context.Background()), "Kyiv")
 	require.NoError(t, err)
 	require.Equal(t, 25.5, data.Temperature)
 	require.Equal(t, 60.0, data.Humidity)
@@ -64,9 +65,9 @@ func TestOpenWeatherAdapter_InvalidJSON(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	adapter := newAdapter(t, mockServer.URL)
+	adapter := newOpenweatherAdapter(t, mockServer.URL)
 
-	_, err := adapter.FetchWeather(withLogger(context.Background()), "Kyiv")
+	_, err := adapter.FetchWeather(testutils.WithMockLogger(context.Background()), "Kyiv")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "decode")
 }

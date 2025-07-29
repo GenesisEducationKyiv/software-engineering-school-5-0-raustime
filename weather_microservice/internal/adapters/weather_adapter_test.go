@@ -12,6 +12,7 @@ import (
 
 	"weather_microservice/internal/adapters"
 	"weather_microservice/internal/apierrors"
+	"weather_microservice/internal/testutils"
 )
 
 func newWeatherAdapter(t *testing.T, baseURL string) *adapters.WeatherAdapter {
@@ -30,9 +31,9 @@ func TestWeatherAdapter_CityNotFound(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	adapter := newOpenWeatherAdapter(t, mockServer.URL)
+	adapter := newWeatherAdapter(t, mockServer.URL)
 
-	_, err := adapter.FetchWeather(withLogger(context.Background()), "InvalidCity")
+	_, err := adapter.FetchWeather(testutils.WithMockLogger(context.Background()), "InvalidCity")
 	require.ErrorIs(t, err, apierrors.ErrCityNotFound)
 }
 
@@ -52,9 +53,9 @@ func TestWeatherAdapter_Success(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	adapter := newOpenWeatherAdapter(t, mockServer.URL)
+	adapter := newWeatherAdapter(t, mockServer.URL)
 
-	data, err := adapter.FetchWeather(withLogger(context.Background()), "Kyiv")
+	data, err := adapter.FetchWeather(testutils.WithMockLogger(context.Background()), "Kyiv")
 	require.NoError(t, err)
 	require.Equal(t, 21.1, data.Temperature)
 	require.Equal(t, 72.0, data.Humidity)
@@ -68,9 +69,9 @@ func TestWeatherAdapter_InvalidJSON(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	adapter := newOpenWeatherAdapter(t, mockServer.URL)
+	adapter := newWeatherAdapter(t, mockServer.URL)
 
-	_, err := adapter.FetchWeather(withLogger(context.Background()), "Kyiv")
+	_, err := adapter.FetchWeather(testutils.WithMockLogger(context.Background()), "Kyiv")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "decode")
 }
@@ -82,9 +83,9 @@ func TestWeatherAdapter_EmptyResponse(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	adapter := newAdapter(t, mockServer.URL)
+	adapter := newWeatherAdapter(t, mockServer.URL)
 
-	_, err := adapter.FetchWeather(withLogger(context.Background()), "Kyiv")
+	_, err := adapter.FetchWeather(testutils.WithMockLogger(context.Background()), "Kyiv")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "empty response body")
 }
