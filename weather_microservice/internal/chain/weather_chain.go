@@ -6,6 +6,7 @@ import (
 
 	"weather_microservice/internal/contracts"
 	"weather_microservice/internal/logging"
+	"weather_microservice/internal/pkg/ctxkeys"
 )
 
 // WeatherHandler defines the interface for weather handlers in the chain.
@@ -45,7 +46,7 @@ func (h *BaseWeatherHandler) GetProviderName() string {
 func (h *BaseWeatherHandler) Handle(ctx context.Context, city string) (contracts.WeatherData, error) {
 	data, err := h.api.FetchWeather(ctx, city)
 
-	if v := ctx.Value(weatherLoggerKey); v != nil {
+	if v := ctx.Value(ctxkeys.Logger); v != nil {
 		if logger, ok := v.(logging.Logger); ok {
 			if err != nil {
 				logger.Error(ctx, h.name, nil, err)
@@ -91,7 +92,7 @@ func (c *WeatherChain) GetWeather(ctx context.Context, city string) (contracts.W
 	}
 
 	// Insert logger in context using a custom key type.
-	ctx = context.WithValue(ctx, weatherLoggerKey, c.logger)
+	ctx = context.WithValue(ctx, ctxkeys.Logger, c.logger)
 
 	return c.firstHandler.Handle(ctx, city)
 }

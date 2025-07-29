@@ -12,6 +12,7 @@ import (
 	"weather_microservice/internal/apierrors"
 	"weather_microservice/internal/contracts"
 	"weather_microservice/internal/logging"
+	"weather_microservice/internal/metrics"
 )
 
 type WeatherAdapter struct {
@@ -39,6 +40,8 @@ func (a *WeatherAdapter) FetchWeather(ctx context.Context, city string) (contrac
 		return contracts.WeatherData{}, err
 	}
 
+	metrics.WeatherRequests.WithLabelValues("weatherapi", city).Inc()
+
 	qCity := url.QueryEscape(city)
 	url := fmt.Sprintf("%s/current.json?key=%s&q=%s", a.configApiBaseURL, a.configApiKey, qCity)
 
@@ -46,6 +49,7 @@ func (a *WeatherAdapter) FetchWeather(ctx context.Context, city string) (contrac
 	if err != nil {
 		err = fmt.Errorf("failed to create request: %w", err)
 		logging.Error(ctx, "adapter:WeatherAPI", nil, err)
+		metrics.WeatherFailures.WithLabelValues("weatherapi", city).Inc()
 		return contracts.WeatherData{}, err
 	}
 
@@ -54,6 +58,7 @@ func (a *WeatherAdapter) FetchWeather(ctx context.Context, city string) (contrac
 	if err != nil {
 		err = fmt.Errorf("failed to get weather from WeatherAPI: %w", err)
 		logging.Error(ctx, "adapter:WeatherAPI", nil, err)
+		metrics.WeatherFailures.WithLabelValues("weatherapi", city).Inc()
 		return contracts.WeatherData{}, err
 	}
 	defer func() {
@@ -66,12 +71,14 @@ func (a *WeatherAdapter) FetchWeather(ctx context.Context, city string) (contrac
 	if err != nil {
 		err = fmt.Errorf("failed to read WeatherAPI response body: %w", err)
 		logging.Error(ctx, "adapter:WeatherAPI", nil, err)
+		metrics.WeatherFailures.WithLabelValues("weatherapi", city).Inc()
 		return contracts.WeatherData{}, err
 	}
 
 	if len(body) == 0 {
 		err = fmt.Errorf("empty response body from WeatherAPI")
 		logging.Error(ctx, "adapter:WeatherAPI", nil, err)
+		metrics.WeatherFailures.WithLabelValues("weatherapi", city).Inc()
 		return contracts.WeatherData{}, err
 	}
 
@@ -92,6 +99,7 @@ func (a *WeatherAdapter) FetchWeather(ctx context.Context, city string) (contrac
 	if err := json.Unmarshal(body, &weatherResp); err != nil {
 		err = fmt.Errorf("failed to decode WeatherAPI response: %w", err)
 		logging.Error(ctx, "adapter:WeatherAPI", nil, err)
+		metrics.WeatherFailures.WithLabelValues("weatherapi", city).Inc()
 		return contracts.WeatherData{}, err
 	}
 
@@ -104,6 +112,7 @@ func (a *WeatherAdapter) FetchWeather(ctx context.Context, city string) (contrac
 			err = fmt.Errorf("WeatherAPI error: %s", weatherResp.Error.Message)
 			logging.Error(ctx, "adapter:WeatherAPI", nil, err)
 		}
+		metrics.WeatherFailures.WithLabelValues("weatherapi", city).Inc()
 		return contracts.WeatherData{}, err
 	}
 
