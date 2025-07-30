@@ -82,10 +82,6 @@ func (c *WeatherChain) SetFirstHandler(handler WeatherHandler) {
 	c.firstHandler = handler
 }
 
-type weatherLoggerKeyType struct{}
-
-var weatherLoggerKey = weatherLoggerKeyType{}
-
 func (c *WeatherChain) GetWeather(ctx context.Context, city string) (contracts.WeatherData, error) {
 	if c.firstHandler == nil {
 		return contracts.WeatherData{}, fmt.Errorf("no weather providers configured")
