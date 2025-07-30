@@ -44,7 +44,9 @@ func (h *BaseWeatherHandler) GetProviderName() string {
 }
 
 func (h *BaseWeatherHandler) Handle(ctx context.Context, city string) (contracts.WeatherData, error) {
-	data, err := h.api.FetchWeather(ctx, city)
+	cleanCity := StripProviderPrefix(city, h.name)
+
+	data, err := h.api.FetchWeather(ctx, cleanCity)
 
 	if v := ctx.Value(ctxkeys.Logger); v != nil {
 		if logger, ok := v.(logging.Logger); ok {

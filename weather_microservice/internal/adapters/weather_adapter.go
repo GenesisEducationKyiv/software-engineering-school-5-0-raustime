@@ -42,8 +42,7 @@ func (a *WeatherAdapter) FetchWeather(ctx context.Context, city string) (contrac
 
 	metrics.WeatherRequests.WithLabelValues("weatherapi", city).Inc()
 
-	qCity := url.QueryEscape(city)
-	url := fmt.Sprintf("%s/current.json?key=%s&q=%s", a.configApiBaseURL, a.configApiKey, qCity)
+	url := fmt.Sprintf("%s/current.json?key=%s&q=%s", a.configApiBaseURL, a.configApiKey, url.QueryEscape(city))
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
