@@ -22,6 +22,7 @@ type Config struct {
 	Environment            string
 	Cache                  CacheConfig
 	LogPath                string
+	LogDefaultLevel        string
 }
 
 type CacheConfig struct {
@@ -83,6 +84,7 @@ func Load() *Config {
 		Environment:            strings.ToLower(getEnv("ENVIRONMENT", "development")),
 		Cache:                  cacheConfig,
 		LogPath:                getEnv("LOG_PATH", "weather.log"),
+		LogDefaultLevel:        getEnv("LOG_DEFAULT_LEVEL", "Info"),
 	}
 
 }
