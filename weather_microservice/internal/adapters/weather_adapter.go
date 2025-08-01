@@ -40,11 +40,13 @@ func (a *WeatherAdapter) FetchWeather(ctx context.Context, city string) (contrac
 		return contracts.WeatherData{}, err
 	}
 
+	// Метрика запиту — назва вже очищена від префікса.
 	metrics.WeatherRequests.WithLabelValues("weatherapi", city).Inc()
 
 	url := fmt.Sprintf("%s/current.json?key=%s&q=%s", a.configApiBaseURL, a.configApiKey, url.QueryEscape(city))
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+
 	if err != nil {
 		err = fmt.Errorf("failed to create request: %w", err)
 		logging.Error(ctx, "adapter:WeatherAPI", nil, err)
@@ -54,6 +56,7 @@ func (a *WeatherAdapter) FetchWeather(ctx context.Context, city string) (contrac
 
 	client := &http.Client{Timeout: a.configApiServerTimeout}
 	resp, err := client.Do(req)
+
 	if err != nil {
 		err = fmt.Errorf("failed to get weather from WeatherAPI: %w", err)
 		logging.Error(ctx, "adapter:WeatherAPI", nil, err)

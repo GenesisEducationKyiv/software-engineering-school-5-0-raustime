@@ -94,3 +94,11 @@ func (c *WeatherChain) GetWeather(ctx context.Context, city string) (contracts.W
 
 	return c.firstHandler.Handle(ctx, city)
 }
+
+func StripProviderPrefix(city, provider string) string {
+	prefix := provider + "-"
+	if len(city) > len(prefix) && city[:len(prefix)] == prefix {
+		return city[len(prefix):]
+	}
+	return city
+}
