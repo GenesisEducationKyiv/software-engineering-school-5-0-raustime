@@ -28,12 +28,20 @@ type mockLogger struct {
 	mock.Mock
 }
 
-func (m *mockLogger) Info(ctx context.Context, source string, data interface{}) {
+func (m *mockLogger) Info(ctx context.Context, source string, data any) {
 	m.Called(ctx, source, data)
 }
 
-func (m *mockLogger) Error(ctx context.Context, source string, data interface{}, err error) {
+func (m *mockLogger) Error(ctx context.Context, source string, data any, err error) {
 	m.Called(ctx, source, data, err)
+}
+
+func (m *mockLogger) Warn(ctx context.Context, source string, data any, err error) {
+	m.Called(ctx, source, data, err)
+}
+
+func (m *mockLogger) Debug(ctx context.Context, source string, data any) {
+	m.Called(ctx, source, data)
 }
 
 // --- Mock Next Handler ---
@@ -56,6 +64,8 @@ func (m *mockHandler) GetProviderName() string {
 	return args.String(0)
 }
 
+// --- TESTS ---
+
 func TestBaseWeatherHandler_Success(t *testing.T) {
 	api := new(mockWeatherAPI)
 	logger := new(mockLogger)
@@ -63,7 +73,7 @@ func TestBaseWeatherHandler_Success(t *testing.T) {
 	handler := chain.NewBaseWeatherHandler(api, "weatherapi")
 
 	expected := contracts.WeatherData{Temperature: 20.5, Humidity: 50, Description: "Clear"}
-	api.On("FetchWeather", mock.Anything, "Kyiv").Return(expected, nil)
+	api.On("FetchWeather", mock.Anything, "Kyiv").Return(expected, nil).Once()
 	logger.On("Info", mock.Anything, "weatherapi", expected).Once()
 
 	ctx := context.WithValue(context.Background(), ctxkeys.Logger, logger)
@@ -84,20 +94,22 @@ func TestBaseWeatherHandler_ErrorAndNextFallback(t *testing.T) {
 	handler := chain.NewBaseWeatherHandler(api, "weatherapi")
 	handler.SetNext(next)
 
-	api.On("FetchWeather", mock.Anything, "Lviv").Return(contracts.WeatherData{}, errors.New("api failed"))
+	api.On("FetchWeather", mock.Anything, "Lviv").Return(contracts.WeatherData{}, errors.New("api failed")).Once()
 	logger.On("Error", mock.Anything, "weatherapi", nil, mock.Anything).Once()
-	next.On("Handle", mock.Anything, "weatherapi-Lviv").Return(contracts.WeatherData{
+
+	fallbackData := contracts.WeatherData{
 		Temperature: 15.2,
 		Humidity:    70,
 		Description: "Partly Cloudy",
-	}, nil)
+	}
+	next.On("Handle", mock.Anything, "weatherapi-Lviv").Return(fallbackData, nil).Once()
 
 	ctx := context.WithValue(context.Background(), ctxkeys.Logger, logger)
 
 	data, err := handler.Handle(ctx, "weatherapi-Lviv")
 	assert.NoError(t, err)
-	assert.Equal(t, 15.2, data.Temperature)
-	assert.Equal(t, "Partly Cloudy", data.Description)
+	assert.Equal(t, fallbackData.Temperature, data.Temperature)
+	assert.Equal(t, fallbackData.Description, data.Description)
 
 	api.AssertExpectations(t)
 	logger.AssertExpectations(t)
@@ -110,7 +122,7 @@ func TestBaseWeatherHandler_FinalFailure(t *testing.T) {
 
 	handler := chain.NewBaseWeatherHandler(api, "weatherapi")
 
-	api.On("FetchWeather", mock.Anything, "CityX").Return(contracts.WeatherData{}, errors.New("network error"))
+	api.On("FetchWeather", mock.Anything, "CityX").Return(contracts.WeatherData{}, errors.New("network error")).Once()
 	logger.On("Error", mock.Anything, "weatherapi", nil, mock.Anything).Once()
 
 	ctx := context.WithValue(context.Background(), ctxkeys.Logger, logger)
