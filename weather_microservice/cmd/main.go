@@ -3,7 +3,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -16,14 +15,21 @@ import (
 	"weather_microservice/gen/go/weather/v1/weatherv1connect"
 	"weather_microservice/internal/bootstrap"
 	"weather_microservice/internal/config"
+	"weather_microservice/internal/logging"
+	"weather_microservice/internal/pkg/ctxkeys"
 	"weather_microservice/internal/server"
 )
 
 func main() {
 	cfg := config.Load()
-	weatherService, err := bootstrap.InitWeatherService(cfg)
+	logger := logging.NewZapWeatherLogger(cfg.LogPath, cfg.LogLevelDefault)
+	ctx := context.WithValue(context.Background(), ctxkeys.Logger, logger)
+
+	weatherService, err := bootstrap.InitWeatherService(ctx, cfg)
+
 	if err != nil {
-		log.Fatalf("Failed to initialize weather service: %v", err)
+		logging.Error(ctx, "Failed to initialize weather service", nil, err)
+		os.Exit(1)
 	}
 
 	// HTTP API
@@ -43,7 +49,7 @@ func main() {
 	grpcMux := http.NewServeMux()
 	grpcMux.Handle(path, handler)
 	grpcSrv := &http.Server{
-		Handler: grpcMux,
+		Handler:      grpcMux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -52,28 +58,30 @@ func main() {
 	h2Server := &http2.Server{}
 	listener, err := net.Listen("tcp", ":"+cfg.GRPCPort)
 	if err != nil {
-		log.Fatalf("failed to listen on gRPC port: %v", err)
+		logging.Error(ctx, "failed to listen on gRPC port", nil, err)
+		os.Exit(1)
 	}
 
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	ctxWithSignal, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	ctx = ctxWithSignal
 
 	// Start HTTP API
 	go func() {
-		log.Println("Starting HTTP service on:", cfg.Port)
+		logger.Info(ctx, "main", "Starting HTTP service on: "+cfg.Port)
 		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("HTTP server error: %v", err)
+			logging.Error(ctx, "HTTP server error", nil, err)
 		}
 	}()
 
 	// Start gRPC (true HTTP/2 plaintext)
 	go func() {
-		log.Println("Starting gRPC (HTTP/2 plaintext) service on:", cfg.GRPCPort)
+		logger.Info(ctx, "main", "Starting gRPC (HTTP/2 plaintext) service on: "+cfg.GRPCPort)
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
-				log.Printf("Accept error: %v", err)
+				logger.Warn(ctx, "grpc-accept", nil, err)
 				continue
 			}
 			go h2Server.ServeConn(conn, &http2.ServeConnOpts{
@@ -83,7 +91,7 @@ func main() {
 	}()
 
 	<-ctx.Done()
-	log.Println("Shutting down weather service...")
+	logger.Info(ctx, "main", "Shutting down weather service...")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

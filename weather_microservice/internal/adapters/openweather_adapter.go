@@ -4,58 +4,64 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"weather_microservice/internal/apierrors"
 	"weather_microservice/internal/contracts"
+	"weather_microservice/internal/logging"
+	"weather_microservice/internal/metrics"
 )
 
-const OPENWEATHER_SERVER_TIMEOUT = 10 * time.Second
+var logSourceOpenWeather = "adapter:OpenWeather"
 
 type OpenWeatherAdapter struct {
-	configApiKey string
+	configApiKey           string
+	configApiBaseURL       string
+	configApiServerTimeout time.Duration
 }
 
-var OpenWeatherAPIBaseURL = func() string {
-	return "https://api.openweathermap.org/data/2.5"
-}
-
-func NewOpenWeatherAdapter(apikey string) (OpenWeatherAdapter, error) {
+func NewOpenWeatherAdapter(apikey string, ApiBaseURL string, ApiServerTimeout time.Duration) (OpenWeatherAdapter, error) {
 	if apikey == "" {
 		return OpenWeatherAdapter{}, fmt.Errorf("OPENWEATHER_API_KEY is not configured")
 	}
 	return OpenWeatherAdapter{
-		configApiKey: apikey,
+		configApiKey:           apikey,
+		configApiBaseURL:       ApiBaseURL,
+		configApiServerTimeout: ApiServerTimeout,
 	}, nil
 }
 
 func (a *OpenWeatherAdapter) FetchWeather(ctx context.Context, city string) (contracts.WeatherData, error) {
+
 	if city == "" {
-		return contracts.WeatherData{}, fmt.Errorf("empty city provided")
+		return fail(ctx, "openweather", city, "invalid input", fmt.Errorf("empty city"))
 	}
-	qCity := url.QueryEscape(city)
+
+	metrics.WeatherRequests.WithLabelValues("openweather", fmt.Sprintf("openweather:%s", city)).Inc()
+
 	url := fmt.Sprintf("%s/weather?q=%s&appid=%s&units=metric",
-		OpenWeatherAPIBaseURL(), qCity, a.configApiKey)
+		a.configApiBaseURL, url.QueryEscape(city), a.configApiKey)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		return contracts.WeatherData{}, fmt.Errorf("failed to create request: %w", err)
+		return fail(ctx, "openweather", city, "failed request", fmt.Errorf("failed to create request: %w", err))
 	}
 
 	client := &http.Client{
-		Timeout: OPENWEATHER_SERVER_TIMEOUT,
+		Timeout: a.configApiServerTimeout,
 	}
 
 	resp, err := client.Do(req)
+
 	if err != nil {
-		return contracts.WeatherData{}, fmt.Errorf("failed to get weather: %w", err)
+		return fail(ctx, "openweather", city, "failed api request", fmt.Errorf("failed to get weather: %w", err))
 	}
 	defer func() {
 		if cerr := resp.Body.Close(); cerr != nil {
-			log.Printf("warning: failed to close response body: %v", cerr)
+			logging.Warn(ctx, logSourceOpenWeather, nil, fmt.Errorf("failed to close response body: %w", cerr))
 		}
 	}()
 
@@ -66,14 +72,18 @@ func (a *OpenWeatherAdapter) FetchWeather(ctx context.Context, city string) (con
 			Message string `json:"message"`
 		}
 		_ = json.NewDecoder(resp.Body).Decode(&errResp)
-		if errResp.Message == "city not found" {
+
+		if strings.Contains(strings.ToLower(errResp.Message), "city not found") {
+			metrics.WeatherFailures.WithLabelValues("openweather", fmt.Sprintf("openweather:%s", city)).Inc()
+			logging.Warn(ctx, logSourceOpenWeather, nil, apierrors.ErrCityNotFound)
 			return contracts.WeatherData{}, apierrors.ErrCityNotFound
 		}
-		return contracts.WeatherData{}, fmt.Errorf("weather API 404: %s", errResp.Message)
+
+		return fail(ctx, "openweather", city, "failed api request", fmt.Errorf("weather API 404: %s", errResp.Message))
 	}
 
-	if resp.StatusCode != 200 {
-		return contracts.WeatherData{}, fmt.Errorf("weather API returned status %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		return fail(ctx, "openweather", city, "failed api request", fmt.Errorf("weather API returned status %d", resp.StatusCode))
 	}
 
 	var weatherResp struct {
@@ -87,17 +97,18 @@ func (a *OpenWeatherAdapter) FetchWeather(ctx context.Context, city string) (con
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&weatherResp); err != nil {
-		return contracts.WeatherData{}, fmt.Errorf("failed to decode weather response: %w", err)
+		return fail(ctx, "openweather", city, "failed api request", fmt.Errorf("failed to decode weather response: %w", err))
 	}
 
 	if len(weatherResp.Weather) == 0 {
-		return contracts.WeatherData{}, fmt.Errorf("no weather data found")
+		return fail(ctx, "openweather", city, "failed api request", apierrors.ErrNoWeatherDataFound)
 	}
 
-	// Convert to internal format
-	return contracts.WeatherData{
+	data := contracts.WeatherData{
 		Temperature: weatherResp.Main.Temp,
 		Humidity:    weatherResp.Main.Humidity,
 		Description: weatherResp.Weather[0].Description,
-	}, nil
+	}
+	logging.Info(ctx, logSourceOpenWeather, data)
+	return data, nil
 }
