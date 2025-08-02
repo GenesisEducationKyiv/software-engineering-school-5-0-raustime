@@ -2,7 +2,9 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"runtime/debug"
 	"time"
 
 	"github.com/google/uuid"
@@ -88,14 +90,29 @@ func Recovery() Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer func() {
-				if err := recover(); err != nil {
+				if rec := recover(); rec != nil {
+					// Приведення panic до error
+					var err error
+					switch e := rec.(type) {
+					case error:
+						err = e
+					default:
+						err = fmt.Errorf("%v", e)
+					}
+
+					// Логування через контекстний логер
 					logger := logging.FromContext(r.Context())
 					if logger != nil {
-						logger.Error(r.Context(), "http:Recovery", nil, err.(error))
+						logger.Error(r.Context(), "http:Recovery", map[string]string{
+							"path":   r.URL.Path,
+							"method": r.Method,
+						}, fmt.Errorf("panic: %w\n%s", err, debug.Stack()))
 					}
+
 					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				}
 			}()
+
 			next.ServeHTTP(w, r)
 		})
 	}
