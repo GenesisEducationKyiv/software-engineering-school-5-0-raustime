@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -35,12 +36,12 @@ func NewOpenWeatherAdapter(apikey string, ApiBaseURL string, ApiServerTimeout ti
 }
 
 func (a *OpenWeatherAdapter) FetchWeather(ctx context.Context, city string) (contracts.WeatherData, error) {
-
 	if city == "" {
 		return fail(ctx, "openweather", city, "invalid input", fmt.Errorf("empty city"))
 	}
 
-	metrics.WeatherRequests.WithLabelValues("openweather", fmt.Sprintf("openweather:%s", city)).Inc()
+	// 🔄 Вірна метрика без префікса
+	metrics.WeatherRequests.WithLabelValues("openweather", city).Inc()
 
 	url := fmt.Sprintf("%s/weather?q=%s&appid=%s&units=metric",
 		a.configApiBaseURL, url.QueryEscape(city), a.configApiKey)
@@ -50,14 +51,10 @@ func (a *OpenWeatherAdapter) FetchWeather(ctx context.Context, city string) (con
 		return fail(ctx, "openweather", city, "failed request", fmt.Errorf("failed to create request: %w", err))
 	}
 
-	client := &http.Client{
-		Timeout: a.configApiServerTimeout,
-	}
-
+	client := &http.Client{Timeout: a.configApiServerTimeout}
 	resp, err := client.Do(req)
-
 	if err != nil {
-		return fail(ctx, "openweather", city, "failed api request", fmt.Errorf("failed to get weather: %w", err))
+		return fail(ctx, "openweather", city, "failed API request", fmt.Errorf("failed to get weather: %w", err))
 	}
 	defer func() {
 		if cerr := resp.Body.Close(); cerr != nil {
@@ -65,25 +62,22 @@ func (a *OpenWeatherAdapter) FetchWeather(ctx context.Context, city string) (con
 		}
 	}()
 
-	// Handle 404 (city not found)
 	if resp.StatusCode == http.StatusNotFound {
+		body, _ := io.ReadAll(resp.Body)
 		var errResp struct {
 			Cod     string `json:"cod"`
 			Message string `json:"message"`
 		}
-		_ = json.NewDecoder(resp.Body).Decode(&errResp)
+		_ = json.Unmarshal(body, &errResp)
 
 		if strings.Contains(strings.ToLower(errResp.Message), "city not found") {
-			metrics.WeatherFailures.WithLabelValues("openweather", fmt.Sprintf("openweather:%s", city)).Inc()
-			logging.Warn(ctx, logSourceOpenWeather, nil, apierrors.ErrCityNotFound)
-			return contracts.WeatherData{}, apierrors.ErrCityNotFound
+			return fail(ctx, "openweather", city, "invalid city", apierrors.ErrCityNotFound)
 		}
-
-		return fail(ctx, "openweather", city, "failed api request", fmt.Errorf("weather API 404: %s", errResp.Message))
+		return fail(ctx, "openweather", city, "unexpected 404", fmt.Errorf("weather API 404: %s", errResp.Message))
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return fail(ctx, "openweather", city, "failed api request", fmt.Errorf("weather API returned status %d", resp.StatusCode))
+		return fail(ctx, "openweather", city, "failed API response", fmt.Errorf("weather API returned status %d", resp.StatusCode))
 	}
 
 	var weatherResp struct {
@@ -97,11 +91,11 @@ func (a *OpenWeatherAdapter) FetchWeather(ctx context.Context, city string) (con
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&weatherResp); err != nil {
-		return fail(ctx, "openweather", city, "failed api request", fmt.Errorf("failed to decode weather response: %w", err))
+		return fail(ctx, "openweather", city, "decode error", fmt.Errorf("failed to decode weather response: %w", err))
 	}
 
 	if len(weatherResp.Weather) == 0 {
-		return fail(ctx, "openweather", city, "failed api request", apierrors.ErrNoWeatherDataFound)
+		return fail(ctx, "openweather", city, "no weather data", apierrors.ErrNoWeatherDataFound)
 	}
 
 	data := contracts.WeatherData{
