@@ -10,7 +10,11 @@ import (
 )
 
 func fail(ctx context.Context, provider, city, msg string, err error) (contracts.WeatherData, error) {
-	logging.Error(ctx, "adapter:"+provider, map[string]string{"city": city}, err)
-	metrics.WeatherFailures.WithLabelValues(provider, city).Inc()
+	fullCity := fmt.Sprintf("%s:%s", provider, city)
+	logging.Error(ctx, "adapter:"+provider, map[string]string{
+		"provider": provider,
+		"city":     fullCity,
+	}, err)
+	metrics.WeatherFailures.WithLabelValues(provider, fullCity).Inc()
 	return contracts.WeatherData{}, fmt.Errorf("%s: %w", msg, err)
 }

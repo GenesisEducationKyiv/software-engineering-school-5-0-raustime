@@ -40,7 +40,7 @@ func (a *OpenWeatherAdapter) FetchWeather(ctx context.Context, city string) (con
 		return fail(ctx, "openweather", city, "invalid input", fmt.Errorf("empty city"))
 	}
 
-	metrics.WeatherRequests.WithLabelValues("openweather", city).Inc()
+	metrics.WeatherRequests.WithLabelValues("openweather", fmt.Sprintf("openweather:%s", city)).Inc()
 
 	url := fmt.Sprintf("%s/weather?q=%s&appid=%s&units=metric",
 		a.configApiBaseURL, url.QueryEscape(city), a.configApiKey)
@@ -74,7 +74,7 @@ func (a *OpenWeatherAdapter) FetchWeather(ctx context.Context, city string) (con
 		_ = json.NewDecoder(resp.Body).Decode(&errResp)
 
 		if strings.Contains(strings.ToLower(errResp.Message), "city not found") {
-			metrics.WeatherFailures.WithLabelValues("openweather", city).Inc()
+			metrics.WeatherFailures.WithLabelValues("openweather", fmt.Sprintf("openweather:%s", city)).Inc()
 			logging.Warn(ctx, logSourceOpenWeather, nil, apierrors.ErrCityNotFound)
 			return contracts.WeatherData{}, apierrors.ErrCityNotFound
 		}
