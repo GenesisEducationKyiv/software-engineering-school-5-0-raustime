@@ -5,6 +5,15 @@ import (
 	"weather_microservice/internal/pkg/ctxkeys"
 )
 
+type nopLogger struct{}
+
+func (nopLogger) Info(context.Context, string, any)         {}
+func (nopLogger) Warn(context.Context, string, any, error)  {}
+func (nopLogger) Error(context.Context, string, any, error) {}
+func (nopLogger) Debug(context.Context, string, any)        {}
+
+var defaultLogger = nopLogger{}
+
 // FromContext returns Logger from context, or nil if not present.
 func FromContext(ctx context.Context) Logger {
 	if v := ctx.Value(ctxkeys.Logger); v != nil {
@@ -12,7 +21,7 @@ func FromContext(ctx context.Context) Logger {
 			return logger
 		}
 	}
-	return nil
+	return defaultLogger
 }
 
 // Info logs an info-level message from context.

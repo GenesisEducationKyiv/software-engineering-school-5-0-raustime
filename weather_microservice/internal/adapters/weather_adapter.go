@@ -15,6 +15,8 @@ import (
 	"weather_microservice/internal/metrics"
 )
 
+const logSourceWeather = "adapter:WeatherAPI"
+
 type WeatherAdapter struct {
 	configApiKey           string
 	configApiBaseURL       string
@@ -35,9 +37,7 @@ func NewWeatherAdapter(apikey string, apiBaseURL string, apiServerTimeout time.D
 
 func (a *WeatherAdapter) FetchWeather(ctx context.Context, city string) (contracts.WeatherData, error) {
 	if city == "" {
-		err := fmt.Errorf("empty city provided")
-		logging.Error(ctx, "adapter:WeatherAPI", nil, err)
-		return contracts.WeatherData{}, err
+		return fail(ctx, "weatherapi", city, "invalid input", fmt.Errorf("empty city"))
 	}
 
 	// Метрика запиту — назва вже очищена від префікса.
@@ -48,40 +48,28 @@ func (a *WeatherAdapter) FetchWeather(ctx context.Context, city string) (contrac
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 
 	if err != nil {
-		err = fmt.Errorf("failed to create request: %w", err)
-		logging.Error(ctx, "adapter:WeatherAPI", nil, err)
-		metrics.WeatherFailures.WithLabelValues("weatherapi", city).Inc()
-		return contracts.WeatherData{}, err
+		return fail(ctx, "weatherapi", city, "failed request", fmt.Errorf("failed to create request: %w", err))
 	}
 
 	client := &http.Client{Timeout: a.configApiServerTimeout}
 	resp, err := client.Do(req)
 
 	if err != nil {
-		err = fmt.Errorf("failed to get weather from WeatherAPI: %w", err)
-		logging.Error(ctx, "adapter:WeatherAPI", nil, err)
-		metrics.WeatherFailures.WithLabelValues("weatherapi", city).Inc()
-		return contracts.WeatherData{}, err
+		return fail(ctx, "weatherapi", city, "failed api request. ", fmt.Errorf("failed to get weather from WeatherAPI: %w", err))
 	}
 	defer func() {
 		if cerr := resp.Body.Close(); cerr != nil {
-			logging.Warn(ctx, "adapter:WeatherAPI", nil, fmt.Errorf("failed to close response body: %w", cerr))
+			logging.Warn(ctx, logSourceWeather, nil, fmt.Errorf("failed to close response body: %w", cerr))
 		}
 	}()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		err = fmt.Errorf("failed to read WeatherAPI response body: %w", err)
-		logging.Error(ctx, "adapter:WeatherAPI", nil, err)
-		metrics.WeatherFailures.WithLabelValues("weatherapi", city).Inc()
-		return contracts.WeatherData{}, err
+		return fail(ctx, "weatherapi", city, "failed api request. ", fmt.Errorf("failed to read WeatherAPI response body: %w", err))
 	}
 
 	if len(body) == 0 {
-		err = fmt.Errorf("empty response body from WeatherAPI")
-		logging.Error(ctx, "adapter:WeatherAPI", nil, err)
-		metrics.WeatherFailures.WithLabelValues("weatherapi", city).Inc()
-		return contracts.WeatherData{}, err
+		return fail(ctx, "weatherapi", city, "failed api request. ", fmt.Errorf("empty response body from WeatherAPI"))
 	}
 
 	var weatherResp struct {
@@ -99,20 +87,17 @@ func (a *WeatherAdapter) FetchWeather(ctx context.Context, city string) (contrac
 	}
 
 	if err := json.Unmarshal(body, &weatherResp); err != nil {
-		err = fmt.Errorf("failed to decode WeatherAPI response: %w", err)
-		logging.Error(ctx, "adapter:WeatherAPI", nil, err)
-		metrics.WeatherFailures.WithLabelValues("weatherapi", city).Inc()
-		return contracts.WeatherData{}, err
+		return fail(ctx, "weatherapi", city, "failed api request. ", fmt.Errorf("failed to decode WeatherAPI response: %w", err))
 	}
 
 	if weatherResp.Error.Code != 0 {
 		var err error
 		if weatherResp.Error.Code == 1006 {
 			err = apierrors.ErrCityNotFound
-			logging.Warn(ctx, "adapter:WeatherAPI", nil, err)
+			logging.Warn(ctx, logSourceWeather, nil, err)
 		} else {
 			err = fmt.Errorf("WeatherAPI error: %s", weatherResp.Error.Message)
-			logging.Error(ctx, "adapter:WeatherAPI", nil, err)
+			logging.Error(ctx, logSourceWeather, nil, err)
 		}
 		metrics.WeatherFailures.WithLabelValues("weatherapi", city).Inc()
 		return contracts.WeatherData{}, err
@@ -123,6 +108,6 @@ func (a *WeatherAdapter) FetchWeather(ctx context.Context, city string) (contrac
 		Humidity:    weatherResp.Current.Humidity,
 		Description: weatherResp.Current.Condition.Text,
 	}
-	logging.Info(ctx, "adapter:WeatherAPI", data)
+	logging.Info(ctx, logSourceWeather, data)
 	return data, nil
 }

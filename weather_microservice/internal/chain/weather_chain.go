@@ -48,23 +48,16 @@ func (h *BaseWeatherHandler) Handle(ctx context.Context, city string) (contracts
 
 	data, err := h.api.FetchWeather(ctx, cleanCity)
 
-	if v := ctx.Value(ctxkeys.Logger); v != nil {
-		if logger, ok := v.(logging.Logger); ok {
-			if err != nil {
-				logger.Error(ctx, h.name, nil, err)
-			} else {
-				logger.Info(ctx, h.name, data)
-			}
-		}
-	}
-
+	logger := logging.FromContext(ctx)
 	if err != nil {
+		logger.Error(ctx, h.name, nil, err)
 		if h.next != nil {
 			return h.next.Handle(ctx, city)
 		}
 		return contracts.WeatherData{}, fmt.Errorf("all weather providers failed, last error from %s: %w", h.name, err)
 	}
 
+	logger.Info(ctx, h.name, data)
 	return data, nil
 }
 

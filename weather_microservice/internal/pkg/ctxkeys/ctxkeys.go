@@ -2,8 +2,9 @@ package ctxkeys
 
 type contextKey string
 
-func (k contextKey) String() string {
-	return "ctxkey:" + string(k)
-}
-
-var Logger = contextKey("logger")
+const (
+	Logger       contextKey = "logger"
+	RequestIDKey contextKey = "request_id"
+	TraceIDKey   contextKey = "trace_id"
+	UserIDKey    contextKey = "user_id"
+)

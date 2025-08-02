@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"context"
 	"fmt"
 	"weather_microservice/internal/adapters"
 	"weather_microservice/internal/cache"
@@ -12,9 +13,14 @@ import (
 	"weather_microservice/internal/weather_service"
 )
 
-func InitWeatherService(cfg *config.Config) (weather_service.WeatherService, error) {
+func InitWeatherService(ctx context.Context, cfg *config.Config) (weather_service.WeatherService, error) {
 	if cfg == nil {
 		return weather_service.WeatherService{}, fmt.Errorf("failed to load config")
+	}
+
+	logger := logging.FromContext(ctx)
+	if logger == nil {
+		return weather_service.WeatherService{}, fmt.Errorf("logger not found in context")
 	}
 
 	// Register Prometheus metrics
@@ -44,9 +50,6 @@ func InitWeatherService(cfg *config.Config) (weather_service.WeatherService, err
 	} else {
 		redisCache = cache.NoopWeatherCache{}
 	}
-
-	// Setup logger
-	logger := logging.NewZapWeatherLogger(cfg.LogPath)
 
 	// Setup adapters
 	openWeather, err := adapters.NewOpenWeatherAdapter(cfg.OpenWeatherKey, cfg.OpenWeatherBaseURL, cfg.ExtAPITimeout)

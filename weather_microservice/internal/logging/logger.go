@@ -7,6 +7,8 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
+
+	"weather_microservice/internal/pkg/ctxkeys"
 )
 
 type Logger interface {
@@ -22,7 +24,11 @@ type ZapWeatherLogger struct {
 	logger *zap.Logger
 }
 
-func NewZapWeatherLogger(logPath string) *ZapWeatherLogger {
+func NewZapWeatherLogger(logPath string, levelStr string) *ZapWeatherLogger {
+	var lvl zapcore.Level
+	if err := lvl.UnmarshalText([]byte(levelStr)); err != nil {
+		lvl = zapcore.InfoLevel
+	}
 	writerSyncer := zapcore.AddSync(&lumberjack.Logger{
 		Filename:   logPath,
 		MaxSize:    10, // MB
@@ -41,7 +47,7 @@ func NewZapWeatherLogger(logPath string) *ZapWeatherLogger {
 	core := zapcore.NewCore(
 		zapcore.NewJSONEncoder(encoderCfg),
 		writerSyncer,
-		zap.InfoLevel,
+		lvl,
 	)
 
 	return &ZapWeatherLogger{
@@ -49,26 +55,36 @@ func NewZapWeatherLogger(logPath string) *ZapWeatherLogger {
 	}
 }
 func (z *ZapWeatherLogger) Info(ctx context.Context, source string, payload any) {
-	z.logger.Info("info", buildFields(source, payload, nil)...)
+	z.logger.Info("info", buildFields(ctx, source, payload, nil)...)
 }
 
 func (z *ZapWeatherLogger) Warn(ctx context.Context, source string, payload any, err error) {
-	z.logger.Warn("warn", buildFields(source, payload, err)...)
+	z.logger.Warn("warn", buildFields(ctx, source, payload, err)...)
 }
 
 func (z *ZapWeatherLogger) Error(ctx context.Context, source string, payload any, err error) {
-	z.logger.Error("error", buildFields(source, payload, err)...)
+	z.logger.Error("error", buildFields(ctx, source, payload, err)...)
 }
 
 func (z *ZapWeatherLogger) Debug(ctx context.Context, source string, payload any) {
-	z.logger.Debug("debug", buildFields(source, payload, nil)...)
+	z.logger.Debug("debug", buildFields(ctx, source, payload, nil)...)
 }
 
-func buildFields(source string, payload any, err error) []zap.Field {
+func buildFields(ctx context.Context, source string, payload any, err error) []zap.Field {
 	fields := []zap.Field{
 		zap.String("source", source),
 		zap.Time("timestamp", time.Now()),
 		zap.Bool("success", err == nil),
+	}
+
+	if traceID, ok := ctx.Value(ctxkeys.TraceIDKey).(string); ok {
+		fields = append(fields, zap.String("trace_id", traceID))
+	}
+	if reqID, ok := ctx.Value(ctxkeys.RequestIDKey).(string); ok {
+		fields = append(fields, zap.String("request_id", reqID))
+	}
+	if userID, ok := ctx.Value(ctxkeys.UserIDKey).(string); ok {
+		fields = append(fields, zap.String("user_id", userID))
 	}
 
 	if payload != nil {
