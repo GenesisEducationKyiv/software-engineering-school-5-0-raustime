@@ -40,7 +40,6 @@ func (a *OpenWeatherAdapter) FetchWeather(ctx context.Context, city string) (con
 		return fail(ctx, "openweather", city, "invalid input", fmt.Errorf("empty city"))
 	}
 
-	// 🔄 Вірна метрика без префікса
 	metrics.WeatherRequests.WithLabelValues("openweather", city).Inc()
 
 	url := fmt.Sprintf("%s/weather?q=%s&appid=%s&units=metric",

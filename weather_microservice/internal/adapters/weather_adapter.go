@@ -41,7 +41,7 @@ func (a *WeatherAdapter) FetchWeather(ctx context.Context, city string) (contrac
 	}
 
 	// Метрика запиту — назва вже очищена від префікса.
-	metrics.WeatherRequests.WithLabelValues("weatherapi", fmt.Sprintf("weatherapi:%s", city)).Inc()
+	metrics.WeatherRequests.WithLabelValues("weatherapi", city).Inc()
 
 	url := fmt.Sprintf("%s/current.json?key=%s&q=%s", a.configApiBaseURL, a.configApiKey, url.QueryEscape(city))
 
