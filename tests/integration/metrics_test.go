@@ -75,8 +75,11 @@ func fetchMetric(metric, provider, city string) int {
 		return -1
 	}
 
+	// Debug: Print all metrics to see actual format
+	fmt.Printf("DEBUG: All metrics:\n%s\n", string(body))
+
 	// Пошук exact match з правильним порядком лейблів
-	// Прометей генерує їх у форматі: metric{label1="val1",label2="val2"} <value>
+	// Prometeus генерує їх у форматі: metric{label1="val1",label2="val2"} <value>
 	prefix := fmt.Sprintf(`%s{provider="%s",city="%s"} `, metric, provider, city)
 	for _, line := range strings.Split(string(body), "\n") {
 		if strings.HasPrefix(line, prefix) {

@@ -13,7 +13,6 @@ import (
 	"weather_microservice/internal/apierrors"
 	"weather_microservice/internal/contracts"
 	"weather_microservice/internal/logging"
-	"weather_microservice/internal/metrics"
 )
 
 var logSourceOpenWeather = "adapter:OpenWeather"
@@ -39,8 +38,6 @@ func (a *OpenWeatherAdapter) FetchWeather(ctx context.Context, city string) (con
 	if city == "" {
 		return fail(ctx, "openweather", city, "invalid input", fmt.Errorf("empty city"))
 	}
-
-	metrics.WeatherRequests.WithLabelValues("openweather", city).Inc()
 
 	url := fmt.Sprintf("%s/weather?q=%s&appid=%s&units=metric",
 		a.configApiBaseURL, url.QueryEscape(city), a.configApiKey)

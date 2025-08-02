@@ -6,6 +6,7 @@ import (
 
 	"weather_microservice/internal/contracts"
 	"weather_microservice/internal/logging"
+	"weather_microservice/internal/metrics"
 	"weather_microservice/internal/pkg/ctxkeys"
 )
 
@@ -45,6 +46,8 @@ func (h *BaseWeatherHandler) GetProviderName() string {
 
 func (h *BaseWeatherHandler) Handle(ctx context.Context, city string) (contracts.WeatherData, error) {
 	cleanCity := StripProviderPrefix(city, h.name)
+
+	metrics.WeatherRequests.WithLabelValues(h.name, cleanCity).Inc()
 
 	data, err := h.api.FetchWeather(ctx, cleanCity)
 

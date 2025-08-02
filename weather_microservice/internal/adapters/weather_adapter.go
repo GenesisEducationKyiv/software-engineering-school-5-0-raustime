@@ -40,9 +40,6 @@ func (a *WeatherAdapter) FetchWeather(ctx context.Context, city string) (contrac
 		return fail(ctx, "weatherapi", city, "invalid input", fmt.Errorf("empty city"))
 	}
 
-	// Метрика запиту — назва вже очищена від префікса.
-	metrics.WeatherRequests.WithLabelValues("weatherapi", city).Inc()
-
 	url := fmt.Sprintf("%s/current.json?key=%s&q=%s", a.configApiBaseURL, a.configApiKey, url.QueryEscape(city))
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -99,7 +96,7 @@ func (a *WeatherAdapter) FetchWeather(ctx context.Context, city string) (contrac
 			err = fmt.Errorf("WeatherAPI error: %s", weatherResp.Error.Message)
 			logging.Error(ctx, logSourceWeather, nil, err)
 		}
-		metrics.WeatherFailures.WithLabelValues("weatherapi", fmt.Sprintf("weatherapi:%s", city)).Inc()
+		metrics.WeatherFailures.WithLabelValues("weatherapi", city).Inc()
 		return contracts.WeatherData{}, err
 	}
 
