@@ -33,6 +33,7 @@ func InitWeatherService(ctx context.Context, cfg *config.Config) (weather_servic
 	var redisCache contracts.WeatherCache
 	if cfg.Cache.Enabled {
 		redisCache = cache.NewRedisCache(
+			ctx,
 			cache.RedisConfig{
 				Addr:     cfg.Cache.Redis.Addr,
 				Password: cfg.Cache.Redis.Password,
@@ -44,9 +45,8 @@ func InitWeatherService(ctx context.Context, cfg *config.Config) (weather_servic
 				IsEnabled:         cfg.Cache.Enabled,
 				DefaultExpiration: cfg.Cache.Expiration,
 			},
-			cacheMetrics, // адаптер для інтерфейсу cache.Metrics
+			cacheMetrics,
 		)
-
 	} else {
 		redisCache = cache.NoopWeatherCache{}
 	}
@@ -54,11 +54,13 @@ func InitWeatherService(ctx context.Context, cfg *config.Config) (weather_servic
 	// Setup adapters
 	openWeather, err := adapters.NewOpenWeatherAdapter(cfg.OpenWeatherKey, cfg.OpenWeatherBaseURL, cfg.ExtAPITimeout)
 	if err != nil {
+		logger.Error(ctx, "bootstrap", nil, err)
 		return weather_service.WeatherService{}, fmt.Errorf("failed to create OpenWeather adapter: %w", err)
 	}
 
 	weatherAPI, err := adapters.NewWeatherAdapter(cfg.WeatherKey, cfg.WeatherBaseURL, cfg.ExtAPITimeout)
 	if err != nil {
+		logger.Error(ctx, "bootstrap", nil, err)
 		return weather_service.WeatherService{}, fmt.Errorf("failed to create WeatherAPI adapter: %w", err)
 	}
 
