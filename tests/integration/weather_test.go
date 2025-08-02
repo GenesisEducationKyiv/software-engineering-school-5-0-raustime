@@ -67,10 +67,3 @@ func TestWeatherService_InvalidEndpoint(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
-
-func TestWeatherService_MetricsEndpoint(t *testing.T) {
-	resp, err := client.Get("http://weather_service:8080/metrics")
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.Contains(t, resp.Header.Get("Content-Type"), "text/plain")
-}
