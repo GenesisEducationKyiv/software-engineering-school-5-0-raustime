@@ -29,6 +29,7 @@ func NewZapWeatherLogger(logPath string, levelStr string) *ZapWeatherLogger {
 	if err := lvl.UnmarshalText([]byte(levelStr)); err != nil {
 		lvl = zapcore.InfoLevel
 	}
+
 	writerSyncer := zapcore.AddSync(&lumberjack.Logger{
 		Filename:   logPath,
 		MaxSize:    10, // MB
@@ -50,8 +51,16 @@ func NewZapWeatherLogger(logPath string, levelStr string) *ZapWeatherLogger {
 		lvl,
 	)
 
+	// Обгортаємо core у семплер
+	sampledCore := zapcore.NewSamplerWithOptions(
+		core,
+		time.Second, // інтервал
+		1,           // перший лог проходить завжди
+		5,           // максимум схожих логів на інтервал
+	)
+
 	return &ZapWeatherLogger{
-		logger: zap.New(core, zap.AddCaller()),
+		logger: zap.New(sampledCore, zap.AddCaller()),
 	}
 }
 func (z *ZapWeatherLogger) Info(ctx context.Context, source string, payload any) {
