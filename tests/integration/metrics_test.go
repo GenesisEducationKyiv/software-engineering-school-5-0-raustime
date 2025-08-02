@@ -11,8 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//var client = http.Client{Timeout: 5 * time.Second}
-
 func TestWeatherService_DefaultProvider(t *testing.T) {
 	city := "Kyiv"
 	provider := detectProvider(city)
@@ -25,7 +23,7 @@ func TestWeatherService_DefaultProvider(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	resp.Body.Close()
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(500 * time.Millisecond)
 
 	after := fetchMetric("weather_api_requests_total", provider, city)
 	require.Greater(t, after, before, fmt.Sprintf("metric should increment for %s:%s", provider, city))
@@ -77,7 +75,9 @@ func fetchMetric(metric, provider, city string) int {
 		return -1
 	}
 
-	prefix := fmt.Sprintf(`%s{city="%s",provider="%s"} `, metric, city, provider)
+	// Пошук exact match з правильним порядком лейблів
+	// Прометей генерує їх у форматі: metric{label1="val1",label2="val2"} <value>
+	prefix := fmt.Sprintf(`%s{provider="%s",city="%s"} `, metric, provider, city)
 	for _, line := range strings.Split(string(body), "\n") {
 		if strings.HasPrefix(line, prefix) {
 			var count int
@@ -91,8 +91,14 @@ func fetchMetric(metric, provider, city string) int {
 func detectProvider(city string) string {
 	providers := []string{"weatherapi", "openweather"}
 	for _, p := range providers {
-		if fetchMetric("weather_api_requests_total", p, city) >= 0 {
+		fullCity := fmt.Sprintf("%s-%s", p, city)
+		resp, err := client.Get("http://weather_service:8080/api/weather?city=" + fullCity)
+		if err == nil && resp.StatusCode == http.StatusOK {
+			resp.Body.Close()
 			return p
+		}
+		if resp != nil {
+			resp.Body.Close()
 		}
 	}
 	return ""
