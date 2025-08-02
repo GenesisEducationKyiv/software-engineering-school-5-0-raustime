@@ -53,3 +53,24 @@ func TestWeatherService_WeatherAPIProvider_Invalid(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
+
+func TestWeatherService_SameCityMultipleRequests(t *testing.T) {
+	for i := 0; i < 3; i++ {
+		resp, err := client.Get("http://weather_service:8080/api/weather?city=Kyiv")
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+	}
+}
+
+func TestWeatherService_InvalidEndpoint(t *testing.T) {
+	resp, err := client.Get("http://weather_service:8080/api/invalid")
+	require.NoError(t, err)
+	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+}
+
+func TestWeatherService_MetricsEndpoint(t *testing.T) {
+	resp, err := client.Get("http://weather_service:8080/metrics")
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "text/plain")
+}
