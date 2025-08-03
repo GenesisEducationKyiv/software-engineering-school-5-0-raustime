@@ -78,7 +78,7 @@ func TestMetricsEndpoint(t *testing.T) {
 	var resp *http.Response
 	var err error
 	for i := 0; i < 6; i++ {
-		resp, err = http.Get("http://localhost:8080/metrics")
+		resp, err = client.Get("http://weather_service:8080/metrics")
 		if err == nil && resp.StatusCode == http.StatusOK {
 			break
 		}
