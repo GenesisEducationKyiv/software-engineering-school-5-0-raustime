@@ -17,6 +17,7 @@ type Config struct {
 	OpenWeatherKey         string
 	WeatherBaseURL         string
 	WeatherKey             string
+	EnableFallbackChain    bool
 	SubscriptionServiceURL string
 	NATSUrl                string
 	Environment            string
@@ -79,6 +80,7 @@ func Load() *Config {
 		OpenWeatherKey:         getEnv("OPENWEATHER_API_KEY", ""),
 		WeatherBaseURL:         getEnv("OPENWEATHER_BASE_URL", "https://api.weatherapi.com/v1"),
 		WeatherKey:             getEnv("WEATHER_API_KEY", ""),
+		EnableFallbackChain:    strings.ToLower(getEnv("ENABLE_FALLBACK_CHAIN", "true")) == "true",
 		SubscriptionServiceURL: getEnv("SUBSCRIPTION_SERVICE_URL", "http://localhost:8091"),
 		NATSUrl:                getEnv("NATS_URL", "nats://localhost:4222"),
 		Environment:            strings.ToLower(getEnv("ENVIRONMENT", "development")),

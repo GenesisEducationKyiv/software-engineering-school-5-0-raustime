@@ -2,8 +2,10 @@ package chain
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"weather_microservice/internal/apierrors"
 	"weather_microservice/internal/contracts"
 	"weather_microservice/internal/logging"
 	"weather_microservice/internal/metrics"
@@ -19,19 +21,21 @@ type WeatherHandler interface {
 
 // BaseWeatherHandler provides common functionality for all handlers.
 type BaseWeatherHandler struct {
-	next WeatherHandler
-	api  WeatherAPIProvider
-	name string
+	next          WeatherHandler
+	api           WeatherAPIProvider
+	name          string
+	allowFallback bool // Allows fallback to next handler if true
 }
 
 type WeatherAPIProvider interface {
 	FetchWeather(ctx context.Context, city string) (contracts.WeatherData, error)
 }
 
-func NewBaseWeatherHandler(api WeatherAPIProvider, name string) *BaseWeatherHandler {
+func NewBaseWeatherHandlerWithFallback(api WeatherAPIProvider, name string, allowFallback bool) *BaseWeatherHandler {
 	return &BaseWeatherHandler{
-		api:  api,
-		name: name,
+		api:           api,
+		name:          name,
+		allowFallback: allowFallback,
 	}
 }
 
@@ -52,8 +56,15 @@ func (h *BaseWeatherHandler) Handle(ctx context.Context, city string) (contracts
 	data, err := h.api.FetchWeather(ctx, cleanCity)
 
 	logger := logging.FromContext(ctx)
+
 	if err != nil {
 		logger.Error(ctx, h.name, nil, err)
+
+		// Не даємо fallback, якщо вимкнено або це ErrCityNotFound
+		if !h.allowFallback || errors.Is(err, apierrors.ErrCityNotFound) {
+			return contracts.WeatherData{}, err
+		}
+
 		if h.next != nil {
 			return h.next.Handle(ctx, city)
 		}

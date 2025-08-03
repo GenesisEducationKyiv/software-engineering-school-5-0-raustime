@@ -70,7 +70,7 @@ func TestBaseWeatherHandler_Success(t *testing.T) {
 	api := new(mockWeatherAPI)
 	logger := new(mockLogger)
 
-	handler := chain.NewBaseWeatherHandler(api, "weatherapi")
+	handler := chain.NewBaseWeatherHandlerWithFallback(api, "weatherapi", true)
 
 	expected := contracts.WeatherData{Temperature: 20.5, Humidity: 50, Description: "Clear"}
 	api.On("FetchWeather", mock.Anything, "Kyiv").Return(expected, nil).Once()
@@ -91,7 +91,7 @@ func TestBaseWeatherHandler_ErrorAndNextFallback(t *testing.T) {
 	logger := new(mockLogger)
 	next := new(mockHandler)
 
-	handler := chain.NewBaseWeatherHandler(api, "weatherapi")
+	handler := chain.NewBaseWeatherHandlerWithFallback(api, "weatherapi", true)
 	handler.SetNext(next)
 
 	api.On("FetchWeather", mock.Anything, "Lviv").Return(contracts.WeatherData{}, errors.New("api failed")).Once()
@@ -120,7 +120,7 @@ func TestBaseWeatherHandler_FinalFailure(t *testing.T) {
 	api := new(mockWeatherAPI)
 	logger := new(mockLogger)
 
-	handler := chain.NewBaseWeatherHandler(api, "weatherapi")
+	handler := chain.NewBaseWeatherHandlerWithFallback(api, "weatherapi", true)
 
 	api.On("FetchWeather", mock.Anything, "CityX").Return(contracts.WeatherData{}, errors.New("network error")).Once()
 	logger.On("Error", mock.Anything, "weatherapi", nil, mock.Anything).Once()

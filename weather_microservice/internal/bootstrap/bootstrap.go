@@ -67,8 +67,9 @@ func InitWeatherService(ctx context.Context, cfg *config.Config) (weather_servic
 	// Setup chain
 	weatherChain := chain.NewWeatherChain(logger)
 
-	owHandler := chain.NewBaseWeatherHandler(&openWeather, "openweather")
-	waHandler := chain.NewBaseWeatherHandler(&weatherAPI, "weatherapi")
+	owHandler := chain.NewBaseWeatherHandlerWithFallback(&openWeather, "openweather", cfg.EnableFallbackChain)
+	waHandler := chain.NewBaseWeatherHandlerWithFallback(&weatherAPI, "weatherapi", cfg.EnableFallbackChain)
+
 	owHandler.SetNext(waHandler)
 	weatherChain.SetFirstHandler(owHandler)
 
