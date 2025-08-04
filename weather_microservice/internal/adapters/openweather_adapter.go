@@ -60,7 +60,6 @@ func (a *OpenWeatherAdapter) FetchWeather(ctx context.Context, city string) (con
 
 	if resp.StatusCode == http.StatusNotFound {
 		body, _ := io.ReadAll(resp.Body)
-		fmt.Println("📦 OpenWeather raw response (404):", string(body))
 		var errResp struct {
 			Cod     string `json:"cod"`
 			Message string `json:"message"`
