@@ -74,6 +74,12 @@ func TestBaseWeatherHandler_Success(t *testing.T) {
 
 	expected := contracts.WeatherData{Temperature: 20.5, Humidity: 50, Description: "Clear"}
 	api.On("FetchWeather", mock.Anything, "Kyiv").Return(expected, nil).Once()
+
+	// Очікуємо обидва виклики Info
+	logger.On("Info", mock.Anything, "chain:match", map[string]string{
+		"handler": "weatherapi",
+		"input":   "weatherapi-Kyiv",
+	}).Once()
 	logger.On("Info", mock.Anything, "weatherapi", expected).Once()
 
 	ctx := context.WithValue(context.Background(), ctxkeys.Logger, logger)
@@ -95,6 +101,11 @@ func TestBaseWeatherHandler_ErrorAndNextFallback(t *testing.T) {
 	handler.SetNext(next)
 
 	api.On("FetchWeather", mock.Anything, "Lviv").Return(contracts.WeatherData{}, errors.New("api failed")).Once()
+
+	logger.On("Info", mock.Anything, "chain:match", map[string]string{
+		"handler": "weatherapi",
+		"input":   "weatherapi-Lviv",
+	}).Once()
 	logger.On("Error", mock.Anything, "weatherapi", nil, mock.Anything).Once()
 
 	fallbackData := contracts.WeatherData{
