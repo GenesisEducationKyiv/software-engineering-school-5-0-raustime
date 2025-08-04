@@ -2,10 +2,9 @@ package chain
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"strings"
 
-	"weather_microservice/internal/apierrors"
 	"weather_microservice/internal/contracts"
 	"weather_microservice/internal/logging"
 	"weather_microservice/internal/metrics"
@@ -49,25 +48,57 @@ func (h *BaseWeatherHandler) GetProviderName() string {
 }
 
 func (h *BaseWeatherHandler) Handle(ctx context.Context, city string) (contracts.WeatherData, error) {
+	logger := logging.FromContext(ctx)
+
+	if strings.Contains(city, "-") {
+		// If the city has a prefix but it's not for this handler, pass to next
+		if !strings.HasPrefix(city, h.name+"-") {
+			if h.next != nil {
+				logger.Info(ctx, "chain:skip", map[string]string{
+					"handler": h.name,
+					"input":   city,
+					"reason":  "prefix_mismatch",
+				})
+				return h.next.Handle(ctx, city)
+			}
+			return contracts.WeatherData{}, fmt.Errorf("no handler found for provider prefix in: %s", city)
+		}
+	}
+
+
+	logger.Info(ctx, "chain:match", map[string]string{
+		"handler": h.name,
+		"input":   city,
+	})
+
 	cleanCity := StripProviderPrefix(city, h.name)
 
 	metrics.WeatherRequests.WithLabelValues(h.name, cleanCity).Inc()
 
 	data, err := h.api.FetchWeather(ctx, cleanCity)
 
-	logger := logging.FromContext(ctx)
+	
 
 	if err != nil {
 		logger.Error(ctx, h.name, nil, err)
 
-		// Не даємо fallback, якщо вимкнено або це ErrCityNotFound
-		if !h.allowFallback || errors.Is(err, apierrors.ErrCityNotFound) {
-			return contracts.WeatherData{}, err
+		// Only fallback if allowed and there's no specific provider prefix
+		if h.allowFallback && !strings.Contains(city, "-") {
+			if h.next != nil {
+				logger.Info(ctx, "chain:fallback", map[string]string{
+					"from_handler": h.name,
+					"city":         city,
+					"error":        err.Error(),
+				})
+				return h.next.Handle(ctx, city)
+			}
 		}
 
-		if h.next != nil {
-			return h.next.Handle(ctx, city)
+		// If there was a specific provider prefix, don't fallback - return the error
+		if strings.HasPrefix(city, h.name+"-") {
+			return contracts.WeatherData{}, fmt.Errorf("provider %s failed for city %s: %w", h.name, cleanCity, err)
 		}
+
 		return contracts.WeatherData{}, fmt.Errorf("all weather providers failed, last error from %s: %w", h.name, err)
 	}
 
@@ -104,8 +135,12 @@ func (c *WeatherChain) GetWeather(ctx context.Context, city string) (contracts.W
 
 func StripProviderPrefix(city, provider string) string {
 	prefix := provider + "-"
-	if len(city) > len(prefix) && city[:len(prefix)] == prefix {
-		return city[len(prefix):]
+	if strings.HasPrefix(city, prefix) {
+		return strings.TrimPrefix(city, prefix)
 	}
 	return city
+}
+
+func ShouldHandleCity(city, provider string) bool {
+	return strings.HasPrefix(city, provider+"-")
 }

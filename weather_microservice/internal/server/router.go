@@ -3,6 +3,8 @@ package server
 import (
 	"net/http"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"weather_microservice/internal/client"
 	"weather_microservice/internal/config"
 	"weather_microservice/internal/server/handlers"
@@ -42,4 +44,6 @@ func (r *Router) setupRoutes() {
 	r.mux.HandleFunc("POST /api/subscribe", r.subscriptionHandler.Subscribe)
 	r.mux.HandleFunc("GET /api/confirm/{token}", r.subscriptionHandler.Confirm)
 	r.mux.HandleFunc("GET /api/unsubscribe/{token}", r.subscriptionHandler.Unsubscribe)
+
+	r.mux.Handle("/metrics", promhttp.Handler())
 }
