@@ -104,20 +104,21 @@ func TestBaseWeatherHandler_ErrorAndNextFallback(t *testing.T) {
 
 	logger.On("Info", mock.Anything, "chain:match", map[string]string{
 		"handler": "weatherapi",
-		"input":   "weatherapi-Lviv",
+		"input":   "Lviv",
 	}).Once()
 	logger.On("Error", mock.Anything, "weatherapi", nil, mock.Anything).Once()
+	logger.On("Info", mock.Anything, "chain:fallback", mock.AnythingOfType("map[string]string")).Once()
 
 	fallbackData := contracts.WeatherData{
 		Temperature: 15.2,
 		Humidity:    70,
 		Description: "Partly Cloudy",
 	}
-	next.On("Handle", mock.Anything, "weatherapi-Lviv").Return(fallbackData, nil).Once()
+	next.On("Handle", mock.Anything, "Lviv").Return(fallbackData, nil).Once()
 
 	ctx := context.WithValue(context.Background(), ctxkeys.Logger, logger)
 
-	data, err := handler.Handle(ctx, "weatherapi-Lviv")
+	data, err := handler.Handle(ctx, "Lviv")
 	assert.NoError(t, err)
 	assert.Equal(t, fallbackData.Temperature, data.Temperature)
 	assert.Equal(t, fallbackData.Description, data.Description)
@@ -127,6 +128,7 @@ func TestBaseWeatherHandler_ErrorAndNextFallback(t *testing.T) {
 	next.AssertExpectations(t)
 }
 
+
 func TestBaseWeatherHandler_FinalFailure(t *testing.T) {
 	api := new(mockWeatherAPI)
 	logger := new(mockLogger)
@@ -134,6 +136,11 @@ func TestBaseWeatherHandler_FinalFailure(t *testing.T) {
 	handler := chain.NewBaseWeatherHandlerWithFallback(api, "weatherapi", true)
 
 	api.On("FetchWeather", mock.Anything, "CityX").Return(contracts.WeatherData{}, errors.New("network error")).Once()
+
+	logger.On("Info", mock.Anything, "chain:match", map[string]string{
+		"handler": "weatherapi",
+		"input":   "weatherapi-CityX",
+	}).Once()
 	logger.On("Error", mock.Anything, "weatherapi", nil, mock.Anything).Once()
 
 	ctx := context.WithValue(context.Background(), ctxkeys.Logger, logger)
@@ -141,7 +148,7 @@ func TestBaseWeatherHandler_FinalFailure(t *testing.T) {
 	data, err := handler.Handle(ctx, "weatherapi-CityX")
 	assert.Error(t, err)
 	assert.Empty(t, data.Description)
-	assert.Contains(t, err.Error(), "all weather providers failed")
+	assert.Contains(t, err.Error(), "provider weatherapi failed")
 
 	api.AssertExpectations(t)
 	logger.AssertExpectations(t)
