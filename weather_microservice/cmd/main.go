@@ -22,7 +22,7 @@ import (
 
 func main() {
 	cfg := config.Load()
-	logger := logging.NewZapWeatherLogger(cfg.LogPath, cfg.LogLevelDefault)
+	logger := logging.NewZapWeatherLogger(cfg.LogPath, cfg.LogLevel)
 	ctx := context.WithValue(context.Background(), ctxkeys.Logger, logger)
 
 	weatherService, err := bootstrap.InitWeatherService(ctx, cfg)
