@@ -2,21 +2,14 @@ package metrics
 
 import "github.com/prometheus/client_golang/prometheus"
 
-var (
-	CacheHits = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "weather_cache_hits_total", Help: "Total cache hits",
-	})
-	CacheMisses = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "weather_cache_misses_total", Help: "Total cache misses",
-	})
-	CacheSets = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "weather_cache_sets_total", Help: "Total cache sets",
-	})
-	CacheDeletes = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "weather_cache_deletes_total", Help: "Total cache deletes",
-	})
+var CacheOperationsTotal = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cache_operations_total",
+		Help: "Total cache operations (hits, misses, sets, deletes)",
+	},
+	[]string{"cache", "status", "engine"},
 )
 
 func RegisterCacheMetrics() {
-	prometheus.MustRegister(CacheHits, CacheMisses, CacheSets, CacheDeletes)
+	prometheus.MustRegister(CacheOperationsTotal)
 }
