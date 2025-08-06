@@ -31,7 +31,7 @@ func (s *GRPCWeatherServer) GetWeather(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	logger.Info(ctx, "grpc:GetWeather", map[string]interface{}{
+	logger.Debug(ctx, "grpc:GetWeather", map[string]interface{}{
 		"city":        city,
 		"temperature": data.Temperature,
 		"humidity":    data.Humidity,

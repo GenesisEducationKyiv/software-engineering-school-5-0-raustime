@@ -1,15 +1,8 @@
 package metrics
 
-// CacheMetricsAdapter реалізує інтерфейс cache.Metrics
-type CacheMetricsAdapter struct {
-	metrics *CacheMetrics
-}
+type CacheMetricsAdapter struct{}
 
-func NewCacheMetricsAdapter(metrics *CacheMetrics) *CacheMetricsAdapter {
-	return &CacheMetricsAdapter{metrics: metrics}
-}
-
-func (a *CacheMetricsAdapter) IncCacheHits()    { a.metrics.Hits.Inc() }
-func (a *CacheMetricsAdapter) IncCacheMisses()  { a.metrics.Misses.Inc() }
-func (a *CacheMetricsAdapter) IncCacheSets()    { a.metrics.Sets.Inc() }
-func (a *CacheMetricsAdapter) IncCacheDeletes() { a.metrics.Deletes.Inc() }
+func (CacheMetricsAdapter) IncCacheHits()    { CacheHits.Inc() }
+func (CacheMetricsAdapter) IncCacheMisses()  { CacheMisses.Inc() }
+func (CacheMetricsAdapter) IncCacheSets()    { CacheSets.Inc() }
+func (CacheMetricsAdapter) IncCacheDeletes() { CacheDeletes.Inc() }

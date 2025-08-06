@@ -24,10 +24,11 @@ func InitWeatherService(ctx context.Context, cfg *config.Config) (weather_servic
 	}
 
 	// Register Prometheus metrics
-	cacheRawMetrics := metrics.NewCacheMetrics()
-	cacheMetrics := metrics.NewCacheMetricsAdapter(cacheRawMetrics)
-	metrics.RegisterAll(cacheRawMetrics)
+	// Register Prometheus metrics
+	metrics.RegisterCacheMetrics()
 	metrics.RegisterWeatherMetrics()
+
+	var cacheMetrics cache.Metrics = metrics.CacheMetricsAdapter{}
 
 	// Setup cache
 	var redisCache contracts.WeatherCache
