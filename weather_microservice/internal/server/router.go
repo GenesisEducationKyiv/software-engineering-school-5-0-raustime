@@ -1,8 +1,9 @@
-// weather_microservice/internal/server/router.go
 package server
 
 import (
 	"net/http"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"weather_microservice/internal/client"
 	"weather_microservice/internal/config"
@@ -30,18 +31,19 @@ func NewRouter(cfg *config.Config, weatherService weather_service.WeatherService
 
 	return middleware.Chain(
 		router.mux,
-		middleware.CORS(),
-		middleware.Logging(),
-		middleware.Recovery(),
+		middleware.Recovery(), // ловить panic найглибше
+		middleware.Trace(),    // додає trace_id у ctx
+		middleware.Logging(),  // логування запитів
+		middleware.CORS(),     // заголовки після логіки
 	)
 }
 
 func (r *Router) setupRoutes() {
-	// Weather route
 	r.mux.HandleFunc("GET /api/weather", r.weatherHandler.GetWeather)
 
-	// Subscription routes
 	r.mux.HandleFunc("POST /api/subscribe", r.subscriptionHandler.Subscribe)
 	r.mux.HandleFunc("GET /api/confirm/{token}", r.subscriptionHandler.Confirm)
 	r.mux.HandleFunc("GET /api/unsubscribe/{token}", r.subscriptionHandler.Unsubscribe)
+
+	r.mux.Handle("/metrics", promhttp.Handler())
 }

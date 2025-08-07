@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
-	"weather_microservice/internal/contracts"
-
 	"github.com/redis/go-redis/v9"
+
+	"weather_microservice/internal/contracts"
+	"weather_microservice/internal/logging"
 )
 
 const (
@@ -22,6 +22,13 @@ const (
 	defaultRedisPoolSize = 10
 	defaultRedisTimeout  = 5 * time.Second
 )
+
+type Metrics interface {
+	IncCacheHits()
+	IncCacheMisses()
+	IncCacheSets()
+	IncCacheDeletes()
+}
 
 type RedisClient interface {
 	Get(ctx context.Context, key string) *redis.StringCmd
@@ -71,30 +78,27 @@ func DefaultRedisConfig() RedisConfig {
 }
 
 // NewRedisCache creates a new Redis cache instance.
-func NewRedisCache(redisConfig RedisConfig, cacheConfig CacheConfig, metrics Metrics) *RedisCache {
-	// Create Redis client
+func NewRedisCache(ctx context.Context, redisConfig RedisConfig, cacheConfig CacheConfig, metrics Metrics) *RedisCache {
 	client := redis.NewClient(&redis.Options{
-		Addr:     redisConfig.Addr,
-		Password: redisConfig.Password,
-		DB:       redisConfig.DB,
-		PoolSize: redisConfig.PoolSize,
-
-		// Connection timeouts.
+		Addr:         redisConfig.Addr,
+		Password:     redisConfig.Password,
+		DB:           redisConfig.DB,
+		PoolSize:     redisConfig.PoolSize,
 		DialTimeout:  redisConfig.Timeout,
 		ReadTimeout:  redisConfig.Timeout,
 		WriteTimeout: redisConfig.Timeout,
-
-		// Pool timeouts.
-		PoolTimeout: redisConfig.Timeout,
+		PoolTimeout:  redisConfig.Timeout,
 	})
 
-	// Test connection only if caching is enabled
 	if cacheConfig.IsEnabled {
-		ctx, cancel := context.WithTimeout(context.Background(), redisConfig.Timeout)
+		ctxPing, cancel := context.WithTimeout(ctx, redisConfig.Timeout)
 		defer cancel()
 
-		if err := client.Ping(ctx).Err(); err != nil {
-			log.Printf("Failed to connect to Redis: %v", err)
+		if err := client.Ping(ctxPing).Err(); err != nil {
+			logger := logging.FromContext(ctx)
+			if logger != nil {
+				logger.Error(ctx, "cache:Redis", map[string]string{"stage": "ping"}, err)
+			}
 			return nil
 		}
 	}

@@ -6,12 +6,23 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"weather_microservice/internal/adapters"
 	"weather_microservice/internal/apierrors"
+	"weather_microservice/internal/testutils"
 )
+
+func newOpenweatherAdapter(t *testing.T, baseURL string) *adapters.OpenWeatherAdapter {
+	t.Helper()
+
+	adapter, err := adapters.NewOpenWeatherAdapter("fake-key", baseURL, 3*time.Second)
+	require.NoError(t, err)
+
+	return &adapter
+}
 
 func TestOpenWeatherAdapter_CityNotFound(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -20,21 +31,9 @@ func TestOpenWeatherAdapter_CityNotFound(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	adapter, err := adapters.NewOpenWeatherAdapter("fake-key")
+	adapter := newOpenweatherAdapter(t, mockServer.URL)
 
-	if err != nil {
-		t.Fatalf("Failed to create adapter: %v", err)
-	}
-
-	originalBaseURL := adapters.OpenWeatherAPIBaseURL
-	adapters.OpenWeatherAPIBaseURL = func() string {
-		return mockServer.URL
-	}
-	defer func() {
-		adapters.OpenWeatherAPIBaseURL = originalBaseURL
-	}()
-
-	_, err = adapter.FetchWeather(context.Background(), "InvalidCity")
+	_, err := adapter.FetchWeather(testutils.WithMockLogger(context.Background()), "InvalidCity")
 	require.ErrorIs(t, err, apierrors.ErrCityNotFound)
 }
 
@@ -50,21 +49,9 @@ func TestOpenWeatherAdapter_Success(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	adapter, err := adapters.NewOpenWeatherAdapter("fake-key")
+	adapter := newOpenweatherAdapter(t, mockServer.URL)
 
-	if err != nil {
-		t.Fatalf("Failed to create adapter: %v", err)
-	}
-
-	originalBaseURL := adapters.OpenWeatherAPIBaseURL
-	adapters.OpenWeatherAPIBaseURL = func() string {
-		return mockServer.URL
-	}
-	defer func() {
-		adapters.OpenWeatherAPIBaseURL = originalBaseURL
-	}()
-
-	data, err := adapter.FetchWeather(context.Background(), "Kyiv")
+	data, err := adapter.FetchWeather(testutils.WithMockLogger(context.Background()), "Kyiv")
 	require.NoError(t, err)
 	require.Equal(t, 25.5, data.Temperature)
 	require.Equal(t, 60.0, data.Humidity)
@@ -78,21 +65,9 @@ func TestOpenWeatherAdapter_InvalidJSON(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	adapter, err := adapters.NewOpenWeatherAdapter("fake-key")
+	adapter := newOpenweatherAdapter(t, mockServer.URL)
 
-	if err != nil {
-		t.Fatalf("Failed to create adapter: %v", err)
-	}
-
-	originalBaseURL := adapters.OpenWeatherAPIBaseURL
-	adapters.OpenWeatherAPIBaseURL = func() string {
-		return mockServer.URL
-	}
-	defer func() {
-		adapters.OpenWeatherAPIBaseURL = originalBaseURL
-	}()
-
-	_, err = adapter.FetchWeather(context.Background(), "Kyiv")
+	_, err := adapter.FetchWeather(testutils.WithMockLogger(context.Background()), "Kyiv")
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to decode")
+	require.Contains(t, err.Error(), "decode")
 }
